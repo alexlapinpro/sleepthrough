@@ -287,3 +287,4 @@ details p { margin: 12px 0 0; color: var(--muted); }
 }
 .is-night .btn-quiet { color: var(--moon-dim); }
 .is-night .btn-quiet:hover { color: var(--moon); }
+[tabindex="-1"]:focus { outline: none; }
