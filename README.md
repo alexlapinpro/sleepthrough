@@ -9,7 +9,8 @@ Capstone project, Zimran IT School, 2026.
 | Step | Screen | What happens |
 | --- | --- | --- |
 | 1 | Landing (`#/`) | Hook "Awake at 3:07 again?", the problem, how it works, pricing, FAQ |
-| 2 | Quiz (`#/quiz/0…11`) | 12 one-tap questions: cycle changes, wake-ups, night sweats, wine, caffeine, screens, stress, bedroom, tracker, goal |
+| 2 | Quiz (`#/quiz/0…30`) | 23 questions in 7 blocks (about you, nights, body, days, evenings, mind, plan) with 8 "you're not alone" screens: sourced charts (CDC NCHS, SWAN, Mayo Clinic, sleep-lab studies) personalised with her answers. Caffeine and alcohol steps are skipped when not relevant |
+| 2b | Analyzing (`#/analyzing`) | Loader with 3 yes/no micro-questions that feed the ranking |
 | 3 | Email (`#/email`) | Optional email capture, skippable |
 | 4 | Result (`#/result`) | Sleep Score (0–100), top 3 likely triggers, a 4-week plan with one experiment per week |
 | 5 | Paywall (`#/paywall`) | 12 weeks $39.99 or 4 weeks $19.99, 7-day trial. Honest soft paywall: a visible free week 1 preview |

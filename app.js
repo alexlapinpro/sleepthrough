@@ -454,7 +454,7 @@
       '<div class="topbar"><button class="icon-btn" data-back aria-label="Back">' + ICON.back + '</button><span></span></div>' +
       '<h1 class="q-title" style="margin-top:0">Your plan to get <span class="hl">' + esc(g.text) + '</span></h1>' +
       '<div class="info-card">' + goalChart() + '</div>' +
-      '<ul class="pw-list"><li>Week 1: ' + esc(EXP[p.weeks[0]].name) + ' — your #1 suspect</li><li>3-minute wind-down every evening</li><li>“Awake at 3 AM” mode for ' + esc(say('waketime') || 'the middle of the night') + '</li><li>Your result on day 7, then the next experiment</li></ul>' +
+      '<ul class="pw-list"><li>Week 1: ' + esc(EXP[p.weeks[0]].name) + ' — your #1 suspect</li><li>3-minute wind-down every evening</li><li>“Awake at 3 AM” mode for when you wake' + (answered('waketime') && idx('waketime') < 5 ? ', usually ' + esc(say('waketime')) : ' at night') + '</li><li>Your result on day 7, then the next experiment</li></ul>' +
       '<div class="pw-plans" role="group" aria-label="Choose a plan">' +
       '<button class="pw-plan" data-p="q" aria-pressed="true"><b>12 weeks</b><span class="pw-price">$39.99</span><small>$3.33 a week · best value</small></button>' +
       '<button class="pw-plan" data-p="m" aria-pressed="false"><b>4 weeks</b><span class="pw-price">$19.99</span><small>$5.00 a week</small></button></div>' +
