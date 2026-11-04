@@ -158,10 +158,12 @@
     wave: '<svg viewBox="0 0 24 24"><path d="M3 12h3l3-7 4 14 3-7h5"/></svg>',
     sun: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>',
     chart: '<svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>',
+    doc: '<svg viewBox="0 0 24 24"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4M10 12h5M10 16h5"/></svg>',
+    drop: '<svg viewBox="0 0 24 24"><path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/></svg>',
     watch: '<svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="3"/><path d="M9 6l1-3h4l1 3M9 18l1 3h4l1-3M12 10v2l1.5 1.5"/></svg>'
   };
-  function screen(mode, inner, extraClass) {
-    app.innerHTML = '<div class="screen ' + (mode === 'night' ? 'is-night' : 'is-day') + ' ' + (extraClass || '') + '"><div class="screen-in">' + inner + '</div></div>';
+  function screen(mode, inner, extraClass, tab) {
+    app.innerHTML = '<div class="screen ' + (mode === 'night' ? 'is-night' : 'is-day') + ' ' + (extraClass || '') + (tab ? ' has-tabs' : '') + '"><div class="screen-in">' + inner + '</div>' + (tab ? tabs(tab) : '') + '</div>';
     window.scrollTo(0, 0);
     var h = app.querySelector('h1, .q-title, .hello, .insight-head');
     if (h) { h.setAttribute('tabindex', '-1'); h.focus({ preventScroll: true }); }
@@ -454,7 +456,7 @@
       '<div class="topbar"><button class="icon-btn" data-back aria-label="Back">' + ICON.back + '</button><span></span></div>' +
       '<h1 class="q-title" style="margin-top:0">Your plan to get <span class="hl">' + esc(g.text) + '</span></h1>' +
       '<div class="info-card">' + goalChart() + '</div>' +
-      '<ul class="pw-list"><li>Week 1: ' + esc(EXP[p.weeks[0]].name) + ' — your #1 suspect</li><li>3-minute wind-down every evening</li><li>“Awake at 3 AM” mode for when you wake' + (answered('waketime') && idx('waketime') < 5 ? ', usually ' + esc(say('waketime')) : ' at night') + '</li><li>Your result on day 7, then the next experiment</li></ul>' +
+      '<ul class="pw-list"><li>Week 1: ' + esc(EXP[p.weeks[0]].name) + ' — your #1 suspect</li><li>3-minute wind-down every evening</li><li>Night mode: one tap when you wake' + (answered('waketime') && idx('waketime') < 5 ? ' ' + esc(say('waketime')) : '') + ', and your check-in fills itself in</li><li>Tonight’s plan with times, and a report for your doctor</li><li>Your result on day 7, then the next experiment</li></ul>' +
       '<div class="pw-plans" role="group" aria-label="Choose a plan">' +
       '<button class="pw-plan" data-p="q" aria-pressed="true"><b>12 weeks</b><span class="pw-price">$39.99</span><small>$3.33 a week · best value</small></button>' +
       '<button class="pw-plan" data-p="m" aria-pressed="false"><b>4 weeks</b><span class="pw-price">$19.99</span><small>$5.00 a week</small></button></div>' +
@@ -472,61 +474,247 @@
   // ---------- product ----------
   function currentKey() { var p = state.plan || (state.plan = analyze()); return p.weeks[state.expIndex] || p.weeks[0]; }
   function currentExp() { return EXP[currentKey()]; }
-  function weekCheckins() { var start = state.expIndex * 7; return state.checkins.slice(start, start + 7); }
+  function weekCheckins() { var start = state.expIndex * 7; return state.checkins.slice(start, start + 7).filter(Boolean); }
+  function streak() { var n = 0; for (var i = state.checkins.length - 1; i >= 0; i--) { if (state.checkins[i]) n++; else break; } return n; }
+  function avg(a) { return a.length ? a.reduce(function (s, x) { return s + x; }, 0) / a.length : null; }
+  function fmt(x) { return Math.round(x * 10) / 10; }
 
-  function streak() {
-    var n = 0; for (var i = state.checkins.length - 1; i >= 0; i--) { if (state.checkins[i]) n++; else break; } return n;
+  // ---------- clock: real time, or a preview time set from the demo tools ----------
+  var timers = [];
+  function later(fn, ms) { var t = setInterval(fn, ms); timers.push(t); return t; }
+  function clearTimers() { timers.forEach(clearInterval); timers = []; }
+  function now() { return Date.now() + (state.clockOffset || 0); }
+  function nowDate() { return new Date(now()); }
+  function pad(n) { return String(n).padStart(2, '0'); }
+  function dayKey(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+  // A night runs from noon to noon, so 7:30 PM and 3:07 AM belong to the same night.
+  function nightKey(t) { var d = new Date(t); if (d.getHours() < 12) d = new Date(t - 86400000); return dayKey(d); }
+  function nightOf(k) { state.nights = state.nights || {}; return state.nights[k] || (state.nights[k] = { wakes: [], parked: [], done: [] }); }
+  function fmtHM(min) { min = ((min % 1440) + 1440) % 1440; var h = Math.floor(min / 60), m = min % 60; return ((h % 12) || 12) + ':' + pad(m) + ' ' + (h < 12 ? 'AM' : 'PM'); }
+  function fmtClock(t) { var d = new Date(t); return fmtHM(d.getHours() * 60 + d.getMinutes()); }
+  function minOfDay(t) { var d = new Date(t); return d.getHours() * 60 + d.getMinutes(); }
+  function parseHM(s) { var p = String(s || '22:30').split(':'); return (+p[0]) * 60 + (+p[1] || 0); }
+  function sinceNine(t) { return (minOfDay(t) - 1260 + 1440) % 1440; }
+  function dur(ms) { var m = Math.max(0, Math.round(ms / 60000)); return m < 60 ? m + ' min' : Math.floor(m / 60) + ' h ' + (m % 60) + ' min'; }
+  function phase() {
+    var h = nowDate().getHours();
+    if (h >= 17 && h < 22) return 'evening';
+    if (h >= 22 || h < 5) return 'night';
+    if (h < 11) return 'morning';
+    return 'day';
+  }
+  var SKY = { evening: ['night', 'sky-evening'], night: ['night', 'sky-night'], morning: ['day', 'sky-dawn'], day: ['day', 'sky-day'] };
+
+  // ---------- the night dial: 9 PM to 7 AM, wake-ups as stars ----------
+  function dial(o) {
+    var cx = 160, cy = 168, r = 124;
+    function pt(m, rr) { var a = (-120 + 240 * Math.max(0, Math.min(600, m)) / 600) * Math.PI / 180; return [cx + rr * Math.sin(a), cy - rr * Math.cos(a)]; }
+    function xy(p) { return p[0].toFixed(1) + ' ' + p[1].toFixed(1); }
+    var a0 = pt(0, r), a1 = pt(600, r);
+    var svg = '<path d="M' + xy(a0) + ' A' + r + ' ' + r + ' 0 1 1 ' + xy(a1) + '" class="d-arc"/>';
+    ['10 PM', '12 AM', '2 AM', '4 AM', '6 AM'].forEach(function (l, i) {
+      var m = 60 + i * 120, p1 = pt(m, r - 7), p2 = pt(m, r + 7), pl = pt(m, r + 24);
+      svg += '<line x1="' + p1[0].toFixed(1) + '" y1="' + p1[1].toFixed(1) + '" x2="' + p2[0].toFixed(1) + '" y2="' + p2[1].toFixed(1) + '" class="d-tick"/>' +
+        '<text x="' + pl[0].toFixed(1) + '" y="' + (pl[1] + 4).toFixed(1) + '" class="d-lbl">' + l + '</text>';
+    });
+    if (o.bed != null) { var b = pt(o.bed, r); svg += '<circle cx="' + b[0].toFixed(1) + '" cy="' + b[1].toFixed(1) + '" r="7" class="d-bed"/>'; }
+    if (o.wake != null) { var w = pt(o.wake, r); svg += '<circle cx="' + w[0].toFixed(1) + '" cy="' + w[1].toFixed(1) + '" r="7" class="d-sun"/>'; }
+    (o.stars || []).forEach(function (s) {
+      var p = pt(s.m, r - (s.ring || 0));
+      svg += '<circle cx="' + p[0].toFixed(1) + '" cy="' + p[1].toFixed(1) + '" r="13" class="d-glow ' + (s.cls || '') + '"/><circle cx="' + p[0].toFixed(1) + '" cy="' + p[1].toFixed(1) + '" r="5.5" class="d-star ' + (s.cls || '') + '"/>';
+    });
+    if (o.now != null && o.now <= 600) { var n1 = pt(o.now, r - 20), n2 = pt(o.now, r + 10); svg += '<line x1="' + n1[0].toFixed(1) + '" y1="' + n1[1].toFixed(1) + '" x2="' + n2[0].toFixed(1) + '" y2="' + n2[1].toFixed(1) + '" class="d-now"/>'; }
+    return '<div class="dial ' + (o.cls || '') + '"><svg viewBox="0 0 320 300" role="img" aria-label="' + esc(o.label || 'Night from 9 PM to 7 AM') + '">' + svg + '</svg><div class="dial-c">' + (o.center || '') + '</div></div>';
   }
 
+  // ---------- tonight's plan ----------
+  function planItems() {
+    var k = currentKey(), bed = parseHM(state.bedtime), wake = parseHM(state.wakeAt || '06:45');
+    var exp = {
+      alcohol: { at: 19 * 60, t: 'Last drink by 7:00 PM', s: 'Sparkling water with lime after that' },
+      heat: { at: bed - 60, t: 'Cool the bedroom to 65–68°F', s: 'Light layers, breathable sheets' },
+      caffeine: { at: 12 * 60, t: 'Last caffeine by noon', s: 'Herbal tea or decaf after that' },
+      mind: { at: bed - 60, t: 'Write tomorrow’s worry list', s: '3 worries, one next step for each' },
+      screens: { at: bed - 45, t: 'Phone charging outside the bedroom', s: 'Read or stretch instead' },
+      rhythm: { at: bed - 30, t: 'Alarm set for ' + fmtHM(wake), s: 'Same time every day, weekends too' }
+    }[k];
+    exp.id = 'exp'; exp.exp = true;
+    var items = [exp, { id: 'wind', at: bed - 15, t: '3-minute wind-down', s: 'Long-exhale breathing', href: '#/app/tonight' }];
+    if (k !== 'heat' && state.plan.suspects.indexOf('heat') !== -1) items.push({ id: 'water', at: bed - 10, t: 'Cold water by the bed', s: 'In case a hot flash wakes you' });
+    items.push({ id: 'lights', at: bed, t: 'Lights out', s: 'Your bedtime' });
+    return items.sort(function (a, b) { return a.at - b.at; });
+  }
+  function planList(k) {
+    var n = nightOf(k), items = planItems(), m = minOfDay(now()), next = null;
+    items.forEach(function (it) { if (!next && n.done.indexOf(it.id) === -1 && it.at > m && m >= 12 * 60) next = it; });
+    var head = next ? '<p class="next">Next: ' + esc(next.t) + ' <b>in ' + dur((next.at - m) * 60000) + '</b></p>' : '';
+    return head + '<ul class="tplan">' + items.map(function (it) {
+      var on = n.done.indexOf(it.id) !== -1;
+      return '<li class="' + (on ? 'done ' : '') + (it === next ? 'is-next' : '') + '"><span class="pl-t">' + fmtHM(it.at) + '</span>' +
+        '<span class="pl-x"><b>' + esc(it.t) + (it.exp ? ' <em>this week’s test</em>' : '') + '</b><small>' + (it.href ? '<a href="' + it.href + '">Start it now</a>' : esc(it.s)) + '</small></span>' +
+        '<button class="tick" data-tick="' + it.id + '" aria-pressed="' + on + '" aria-label="Done: ' + esc(it.t) + '"></button></li>';
+    }).join('') + '</ul>';
+  }
+  function bindPlan(k, rerender) {
+    app.querySelectorAll('[data-tick]').forEach(function (b) {
+      b.onclick = function () {
+        var n = nightOf(k), id = b.dataset.tick, at = n.done.indexOf(id);
+        if (at === -1) n.done.push(id); else n.done.splice(at, 1);
+        save(); rerender();
+      };
+    });
+  }
+
+  // ---------- tab bar ----------
+  function tabs(active) {
+    var t = [['today', '#/app', 'Today', ICON.sun], ['night', '#/app/night', 'Awake?', ICON.moon], ['progress', '#/app/progress', 'Progress', ICON.chart], ['report', '#/app/report', 'For my doctor', ICON.doc]];
+    return '<nav class="tabbar" aria-label="App sections">' + t.map(function (x) {
+      return '<a href="' + x[1] + '" class="tab' + (x[0] === active ? ' on' : '') + '"' + (x[0] === active ? ' aria-current="page"' : '') + '>' + x[3] + '<span>' + x[2] + '</span></a>';
+    }).join('') + '</nav>';
+  }
+  function demoTools() {
+    return '<div class="demo-tools"><p>Demo tools for the Capstone review. Preview the app at:</p>' +
+      '<div class="demo-row"><button data-at="19:30">7:30 PM</button><button data-at="03:07">3:07 AM</button><button data-at="07:15">7:15 AM</button><button data-at="now">Real time</button></div>' +
+      '<div class="demo-row"><button data-demo>Fill a sample week</button><button data-month>Fill a sample month</button><button data-reset>Start over</button></div></div>';
+  }
+  function bindDemo(rerender) {
+    app.querySelectorAll('[data-at]').forEach(function (b) {
+      b.onclick = function () {
+        if (b.dataset.at === 'now') { state.clockOffset = 0; save(); toast('Back to real time'); return rerender(); }
+        var real = new Date(), target = new Date(real), hm = parseHM(b.dataset.at);
+        // Evening is "today"; 3 AM and morning are the morning after, so all three share one night.
+        if (real.getHours() < 12 && hm >= 12 * 60) target.setDate(target.getDate() - 1);
+        if (real.getHours() >= 12 && hm < 12 * 60) target.setDate(target.getDate() + 1);
+        target.setHours(Math.floor(hm / 60), hm % 60, 0, 0);
+        state.clockOffset = target - real; save(); toast('Previewing ' + fmtHM(hm)); rerender();
+      };
+    });
+    var d = app.querySelector('[data-demo]'); if (d) d.onclick = function () { fillDemo(); rerender(); };
+    var mo = app.querySelector('[data-month]'); if (mo) mo.onclick = function () { fillMonth(); rerender(); };
+    var r = app.querySelector('[data-reset]'); if (r) r.onclick = function () { try { localStorage.removeItem(KEY); } catch (e) {} state = { answers: {}, email: '', plan: null, sub: null, checkins: [], expIndex: 0 }; go('#/'); };
+  }
+
+  // ---------- Today ----------
   function viewHome() {
     if (!state.plan) return go('#/quiz/0');
-    var e = currentExp(), wk = weekCheckins(), day = Math.min(wk.length + 1, 7);
-    var h = new Date().getHours();
-    var night = h >= 19 || h < 6;
-    var hello = h < 5 ? 'Up in the night?' : h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
-    var dots7 = ''; for (var i = 0; i < 7; i++) { var c = wk[i]; dots7 += '<i class="' + (c ? (c.did ? 'on' : 'miss') : '') + '"></i>'; }
+    var ph = phase(), sky = SKY[ph], k = nightKey(now()), n = nightOf(k);
+    var e = currentExp(), wk = weekCheckins(), done = wk.length >= 7;
     var free = state.sub && state.sub.plan === 'free';
-    var done = wk.length >= 7;
     var g = goalLine();
-    screen(night ? 'night' : 'day',
-      '<div class="topbar"><a class="brand" href="#/" style="font-size:18px;color:inherit">' + '<svg viewBox="0 0 24 24" aria-hidden="true" style="width:18px;height:18px"><path d="M15 3a8 8 0 1 0 6 13A9 9 0 0 1 15 3z"/></svg>SleepThrough</a><span></span></div>' +
-      (free ? '<p class="banner">Free preview: week 1 is open. Start the trial to unlock weeks 2–4.</p>' : '') +
+    var hello = { evening: 'Good evening', night: 'Still up?', morning: 'Good morning', day: 'Good afternoon' }[ph];
+    var dots7 = ''; for (var i = 0; i < 7; i++) { var c = wk[i]; dots7 += '<i class="' + (c ? (c.did ? 'on' : 'miss') : '') + '"></i>'; }
+    var checked = state.checkins.some(function (c) { return c && c.key === k; });
+    var body = '';
+
+    if (ph === 'morning') {
+      var times = n.wakes.map(function (w) { return fmtClock(w.at); });
+      var longest = n.wakes.reduce(function (mx, w) { return Math.max(mx, (w.back || w.at + 20 * 60000) - w.at); }, 0);
+      body += dial({ stars: n.wakes.map(function (w) { return { m: sinceNine(w.at) }; }), bed: parseHM(state.bedtime) - 1260, wake: parseHM(state.wakeAt || '06:45') + 180,
+        center: '<b class="dial-num">' + n.wakes.length + '</b><span>wake-up' + (n.wakes.length === 1 ? '' : 's') + ' logged</span>', label: 'Last night: ' + n.wakes.length + ' wake-ups logged' }) +
+        '<p class="lede-s">' + (n.wakes.length ? 'You tapped at ' + esc(times.join(', ')) + '. Longest awake: ' + dur(longest) + '.' : 'No night taps last night. That’s either a good night, or you can fill it in now.') + '</p>' +
+        (checked ? '<p class="saved">Check-in saved for last night.</p>' : '<a class="btn btn-night btn-block" href="#/app/checkin">' + (n.wakes.length ? 'Confirm your check-in' : 'Do your 30-second check-in') + '</a>');
+      var open = n.parked.filter(function (p) { return !p.done; });
+      if (n.parked.length) {
+        body += '<section class="parked"><h2>You parked ' + n.parked.length + ' thought' + (n.parked.length === 1 ? '' : 's') + ' last night</h2>' +
+          n.parked.map(function (p, i) { return '<label class="pk' + (p.done ? ' done' : '') + '"><input type="checkbox" data-pk="' + i + '"' + (p.done ? ' checked' : '') + '><span>' + esc(p.text) + '<small>' + fmtClock(p.at) + '</small></span></label>'; }).join('') +
+          (open.length ? '<p class="fine-d">Tick one off when it’s handled, or move it to today’s list.</p>' : '<p class="fine-d">All handled. They didn’t need you at 3 AM.</p>') + '</section>';
+      }
+    } else if (ph === 'night') {
+      body += '<a class="night-cta" href="#/app/night"><span class="moon-ic">' + ICON.moon + '</span><span><b>Awake right now?</b><small>Open night mode. The screen goes dim, one tap logs it.</small></span></a>';
+    } else {
+      body += '<div class="bedrow"><span>Bedtime</span><label><input type="time" id="bed" value="' + esc(state.bedtime || '22:30') + '"></label></div>' +
+        '<h2 class="sec-h">' + (ph === 'evening' ? 'Tonight’s plan' : 'Tonight’s plan starts at 7 PM') + '</h2>' + planList(k);
+    }
+
+    body += '<section class="exp-card" aria-label="This week’s test"><p class="lbl">Week ' + (state.expIndex + 1) + ' of 4 · ' + (done ? 'complete' : 'night ' + Math.min(wk.length + 1, 7) + ' of 7') + '</p>' +
+      '<h2>' + esc(e.name) + '</h2><p>' + esc(e.why) + '</p><p class="why">Why you: ' + esc(suspectNote(currentKey())) + '</p><div class="days" aria-label="' + wk.length + ' of 7 nights checked in">' + dots7 + '</div>' +
+      (done ? '<a class="btn btn-lamp btn-block" href="#/app/insight" style="margin-top:16px">See your week ' + (state.expIndex + 1) + ' result</a>' : '') + '</section>';
+
+    screen(sky[0],
+      '<header class="app-head"><a class="brand" href="#/"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 3a8 8 0 1 0 6 13A9 9 0 0 1 15 3z"/></svg>SleepThrough</a><span class="clock-s">' + fmtClock(now()) + '</span></header>' +
+      (free ? '<p class="banner">Free preview: week 1 is open. <a href="#/paywall">Start the trial</a> to unlock weeks 2–4.</p>' : '') +
       '<h1 class="hello">' + hello + '</h1>' +
-      '<p class="streak">Goal: ' + esc(g.text) + ' · ' + (streak() ? streak() + ' check-ins in a row' : 'first check-in tomorrow morning') + '</p>' +
-      '<section class="exp-card" aria-label="Current experiment"><p class="lbl">Week ' + (state.expIndex + 1) + ' · ' + (done ? 'complete' : 'Night ' + day + ' of 7') + '</p>' +
-      '<h2>' + esc(e.name) + '</h2><p>' + esc(e.how) + '</p><p class="why">Why you: ' + esc(suspectNote(currentKey())) + '</p><div class="days" aria-label="' + wk.length + ' of 7 nights checked in">' + dots7 + '</div></section>' +
-      '<div class="actions">' +
-      (done ? action('#/app/insight', ICON.chart, 'See your week ' + (state.expIndex + 1) + ' result', 'Ready now') : '') +
-      action('#/app/tonight', ICON.moon, 'Tonight: 3-minute wind-down', 'Long-exhale breathing before bed') +
-      action('#/app/3am', ICON.wave, 'Awake right now?', answered('waketime') && idx('waketime') < 5 ? 'You usually wake ' + say('waketime') + '. Open this then.' : 'What to do at 3 AM') +
-      action('#/app/checkin', ICON.sun, 'Morning check-in', '30 seconds, 5 taps') +
-      (!done ? action('#/app/insight', ICON.chart, 'Your week so far', wk.length + ' of 7 nights logged') : '') +
-      action('#/app/devices', ICON.watch, 'Connect a sleep tracker', 'Apple Watch, Oura, Fitbit, Whoop') +
-      '</div>' +
-      '<div class="demo-tools"><p style="margin:0">Demo tools for the Capstone review</p><button data-demo>Fill a sample week</button><button data-reset>Start over</button></div>');
-    app.querySelector('[data-demo]').onclick = fillDemo;
-    app.querySelector('[data-reset]').onclick = function () { try { localStorage.removeItem(KEY); } catch (e) {} state = { answers: {}, email: '', plan: null, sub: null, checkins: [], expIndex: 0 }; go('#/'); };
+      '<p class="goal-s">Goal: ' + esc(g.text) + (streak() ? ' · ' + streak() + ' check-ins in a row' : '') + '</p>' + body +
+      '<div class="more">' + action('#/app/tonight', ICON.moon, '3-minute wind-down', 'Long-exhale breathing') + action('#/app/devices', ICON.watch, 'Connect a sleep tracker', 'Apple Watch, Oura, Fitbit, Whoop') + '</div>' +
+      demoTools(), sky[1], 'today');
+    var bed = app.querySelector('#bed'); if (bed) bed.onchange = function () { state.bedtime = bed.value || '22:30'; save(); toast('Bedtime set to ' + fmtHM(parseHM(state.bedtime))); viewHome(); };
+    bindPlan(k, viewHome);
+    app.querySelectorAll('[data-pk]').forEach(function (c) { c.onchange = function () { n.parked[+c.dataset.pk].done = c.checked; save(); viewHome(); }; });
+    bindDemo(viewHome);
   }
   function action(href, icon, title, sub) {
     return '<a class="action" href="' + href + '"><span class="ic">' + icon + '</span><span><b>' + esc(title) + '</b><small>' + esc(sub) + '</small></span><span class="chev" aria-hidden="true">›</span></a>';
   }
 
-  function fillDemo() {
-    var start = state.expIndex * 7;
-    var sample = [
-      { wake: 3, awake: 2, hot: true, did: false, rested: 2 },
-      { wake: 1, awake: 1, hot: false, did: true, rested: 3 },
-      { wake: 1, awake: 0, hot: false, did: true, rested: 4 },
-      { wake: 3, awake: 2, hot: true, did: false, rested: 2 },
-      { wake: 1, awake: 1, hot: false, did: true, rested: 4 },
-      { wake: 0, awake: 0, hot: false, did: true, rested: 5 },
-      { wake: 1, awake: 0, hot: false, did: true, rested: 4 }
-    ];
-    for (var i = 0; i < 7; i++) state.checkins[start + i] = sample[i];
-    save(); toast('Sample week added'); viewHome();
+  // ---------- Night mode: one tap at 3 AM ----------
+  function viewNight(panel) {
+    if (!state.plan) return go('#/quiz/0');
+    var k = nightKey(now()), n = nightOf(k);
+    var last = n.wakes[n.wakes.length - 1], open = last && !last.back ? last : null;
+    var stars = n.wakes.map(function (w) { return { m: sinceNine(w.at), cls: w === open ? 'live' : '' }; });
+    var t = fmtClock(now()), parts = t.split(' ');
+    var center = '<b class="dial-time">' + parts[0] + '<small>' + parts[1] + '</small></b><span>' + (open ? 'Awake for ' + dur(now() - open.at) : n.wakes.length ? n.wakes.length + ' logged tonight' : 'Your night so far') + '</span>';
+    var inner = '<div class="topbar"><a class="icon-btn" href="#/app" aria-label="Close night mode">' + ICON.close + '</a><span class="step-count">Night mode</span></div>' +
+      dial({ stars: stars, now: sinceNine(now()), bed: parseHM(state.bedtime) - 1260, center: center, cls: 'dial-night', label: 'Tonight: ' + n.wakes.length + ' wake-ups logged' });
+    if (!open) {
+      inner += '<button class="awake-btn" data-awake>I’m awake</button>' +
+        '<p class="hint">One tap logs the time. It fills in your morning check-in, so you don’t have to remember.</p>';
+    } else if (panel === 'hot') {
+      inner += '<section class="np"><h1 class="np-h">Cool down, 90 seconds</h1><ol class="cool">' +
+        '<li>Uncover one foot and both hands.</li><li>Flip the pillow to the cool side.</li><li>Sip the cold water by the bed.</li><li>Breathe out slower than you breathe in.</li></ol>' +
+        '<p class="np-timer" id="ct" aria-live="polite">1:30</p><button class="btn btn-ghost btn-block" data-panel="">Done</button></section>';
+    } else if (panel === 'mind') {
+      inner += '<section class="np"><h1 class="np-h">Park the thought</h1><p class="hint">Write it in a few words. It will be on your Today screen in the morning.</p>' +
+        '<label for="pt" class="sr">Thought to park</label><textarea id="pt" class="field area" rows="3" placeholder="Call the school about Friday"></textarea>' +
+        '<button class="btn btn-lamp btn-block" data-park style="margin-top:12px">Park it</button><button class="btn btn-quiet btn-block" data-panel="">Not now</button></section>';
+    } else {
+      inner += '<p class="since">Logged at ' + fmtClock(open.at) + (open.hot ? ' · hot flash' : '') + '</p>' +
+        '<div class="night-acts"><button data-panel="hot"><span>' + ICON.drop + '</span>I’m hot</button><button data-panel="mind"><span>' + ICON.wave + '</span>My mind is racing</button><a href="#/app/tonight"><span>' + ICON.moon + '</span>Breathe with me</a></div>' +
+        '<button class="btn btn-lamp btn-block" data-sleep>Back to sleep</button>';
+    }
+    if (n.parked.length && !panel) inner += '<p class="hint" style="margin-top:14px">' + n.parked.length + ' thought' + (n.parked.length === 1 ? '' : 's') + ' parked for the morning.</p>';
+    screen('night', inner, 'sky-deep night-mode');
+    var aw = app.querySelector('[data-awake]');
+    if (aw) aw.onclick = function () { n.wakes.push({ at: now(), back: null, hot: false }); save(); viewNight(); };
+    app.querySelectorAll('[data-panel]').forEach(function (b) {
+      b.onclick = function () { if (b.dataset.panel === 'hot') { open.hot = true; save(); } viewNight(b.dataset.panel); };
+    });
+    var sl = app.querySelector('[data-sleep]');
+    if (sl) sl.onclick = function () { open.back = now(); save(); toast('Logged. Goodnight.'); viewNight(); };
+    var pk = app.querySelector('[data-park]');
+    if (pk) pk.onclick = function () {
+      var v = app.querySelector('#pt').value.trim(); if (!v) { toast('Write a few words first'); return; }
+      n.parked.push({ text: v, at: now(), done: false }); save(); toast('Parked. It’ll be here in the morning.'); viewNight();
+    };
+    if (panel === 'hot') {
+      var left = 90, el = app.querySelector('#ct');
+      later(function () { left--; if (el) el.textContent = Math.floor(left / 60) + ':' + pad(left % 60); if (left <= 0) { clearTimers(); el.textContent = 'Cooler now?'; } }, 1000);
+    }
+    if (open && !panel) later(function () { var s = app.querySelector('.dial-c span'); if (s) s.textContent = 'Awake for ' + dur(now() - open.at); }, 30000);
   }
 
-  // breathing: inhale 4s, exhale 6s, 3 minutes
+  // ---------- sample data ----------
+  function fillDemo() {
+    var start = state.expIndex * 7;
+    var sample = [[3, 2, 1, 0, 2, [95, 250, 420]], [1, 1, 0, 1, 3, [365]], [1, 0, 0, 1, 4, [370]], [3, 2, 1, 0, 2, [120, 245, 410]], [1, 1, 0, 1, 4, [355]], [0, 0, 0, 1, 5, []], [1, 0, 0, 1, 4, [380]]];
+    for (var i = 0; i < 7; i++) { var c = sample[i]; state.checkins[start + i] = { wake: c[0], awake: c[1], hot: !!c[2], did: !!c[3], rested: c[4], times: c[5] }; }
+    save(); toast('Sample week added');
+  }
+  function fillMonth() {
+    var weeks = [
+      [[3, 2, 1, 0, 2, [95, 250, 420]], [1, 1, 0, 1, 3, [365]], [1, 0, 0, 1, 4, [370]], [3, 2, 1, 0, 2, [120, 245, 410]], [1, 1, 0, 1, 4, [355]], [0, 0, 0, 1, 5, []], [1, 0, 0, 1, 4, [380]]],
+      [[2, 1, 0, 1, 3, [250, 430]], [1, 0, 0, 1, 4, [372]], [3, 2, 1, 0, 2, [150, 250, 440]], [1, 1, 0, 1, 4, [360]], [0, 0, 0, 1, 5, []], [2, 1, 0, 0, 3, [240, 400]], [0, 0, 0, 1, 5, []]],
+      [[1, 1, 0, 1, 4, [365]], [1, 0, 0, 0, 4, [380]], [0, 0, 0, 1, 5, []], [1, 1, 0, 1, 4, [350]], [0, 0, 0, 0, 5, []], [0, 0, 0, 1, 5, []], [1, 0, 0, 0, 4, [390]]],
+      [[0, 0, 0, 1, 5, []], [1, 0, 0, 1, 4, [360]], [0, 0, 0, 1, 5, []]]
+    ];
+    state.checkins = [];
+    weeks.forEach(function (w) { w.forEach(function (c) { state.checkins.push({ wake: c[0], awake: c[1], hot: !!c[2], did: !!c[3], rested: c[4], times: c[5] }); }); });
+    state.expIndex = 3;
+    if (!state.sub || state.sub.plan === 'free') state.sub = { plan: 'q', trialStart: now() };
+    save(); toast('Sample month added: 3 weeks done, week 4 in progress');
+  }
+
+  // ---------- breathing: inhale 4s, exhale 6s, 3 minutes ----------
   function viewTonight() {
     screen('night',
       '<div class="topbar"><button class="icon-btn" data-back aria-label="Close">' + ICON.close + '</button><span class="step-count">3 min</span></div>' +
@@ -534,7 +722,7 @@
       '<p class="cue" id="cue" aria-live="polite">Ready when you are</p><p class="timer" id="tm">3:00</p>' +
       '<label class="check"><input type="checkbox" id="voice"> Read the cues aloud</label>' +
       '<button class="btn btn-lamp" id="go" style="min-width:200px">Start</button></div></div>' +
-      '<p class="disclaimer" style="text-align:center">Breathe in through your nose for 4, out slowly for 6. A longer exhale tells your body it’s safe to rest.</p>');
+      '<p class="disclaimer" style="text-align:center">Breathe in through your nose for 4, out slowly for 6. A longer exhale tells your body it’s safe to rest.</p>', 'sky-deep');
     var orb = app.querySelector('#orb'), cue = app.querySelector('#cue'), tm = app.querySelector('#tm'), btn = app.querySelector('#go');
     var running = false, left = 180, phaseT, clockT;
     function sayCue(t) { cue.textContent = t; if (app.querySelector('#voice').checked && 'speechSynthesis' in window) { try { speechSynthesis.cancel(); var u = new SpeechSynthesisUtterance(t); u.rate = .8; speechSynthesis.speak(u); } catch (e) {} } }
@@ -542,69 +730,79 @@
     function exhale() { if (!running) return; sayCue('And out, slowly'); orb.style.transitionDuration = '6s'; orb.style.transform = 'scale(1)'; phaseT = setTimeout(inhale, 6000); }
     function stop(done) {
       running = false; clearTimeout(phaseT); clearInterval(clockT); orb.style.transform = 'scale(1)'; btn.textContent = 'Start'; left = 180; tm.textContent = '3:00';
-      if (done) { cue.textContent = 'Done. Lights off when you’re ready.'; toast('Wind-down complete'); }
+      if (done) { cue.textContent = 'Done. Lights off when you’re ready.'; var nn = nightOf(nightKey(now())); if (nn.done.indexOf('wind') === -1) { nn.done.push('wind'); save(); } toast('Wind-down done'); }
       else cue.textContent = 'Ready when you are';
     }
     btn.onclick = function () {
       if (running) return stop(false);
       running = true; btn.textContent = 'Stop'; inhale();
-      clockT = setInterval(function () { left--; tm.textContent = Math.floor(left / 60) + ':' + String(left % 60).padStart(2, '0'); if (left <= 0) stop(true); }, 1000);
+      clockT = setInterval(function () { left--; tm.textContent = Math.floor(left / 60) + ':' + pad(left % 60); if (left <= 0) stop(true); }, 1000);
+      timers.push(clockT);
     };
-    app.querySelector('[data-back]').onclick = function () { stop(false); go('#/app'); };
+    app.querySelector('[data-back]').onclick = function () { stop(false); history.length > 1 ? history.back() : go('#/app'); };
   }
 
-  function view3am() {
-    var hot = idx('sweats') >= 2 || has('awakeDo', 3);
-    var racing = idx('stress') >= 2 || has('awakeDo', 2);
-    screen('night',
-      '<div class="topbar"><button class="icon-btn" data-back aria-label="Close">' + ICON.close + '</button><span></span></div>' +
-      '<h1 class="q-title" style="margin-top:0">You’re awake. That’s okay.</h1>' +
-      '<p class="q-help">Keep the screen dim. Don’t check the time again' + (has('awakeDo', 0) ? ' — you told us you usually do' : '') + '.</p>' +
-      '<ol class="three">' +
-      '<li><div><b>Cool down first</b><span>Uncover a foot, flip the pillow, sip cold water.' + (hot ? ' Heat is one of your suspects, so start here.' : '') + '</span></div></li>' +
-      '<li><div><b>Breathe out longer than in</b><span>In for 4, out for 6. Two minutes is enough.</span></div></li>' +
-      '<li><div><b>Park the thought</b><span>If your mind is racing, say it once in a sentence. It will still be there in the morning.' + (racing ? ' Tomorrow, write it on your worry list at 9:30 PM.' : '') + '</span></div></li>' +
-      '<li><div><b>Still awake after about 20 minutes?</b><span>Get up, keep lights low, do something boring. Go back when you feel sleepy.</span></div></li>' +
-      '</ol><div class="spacer"></div>' +
-      '<a class="btn btn-lamp btn-block" href="#/app/tonight">Start 2-minute breathing</a>', 'dim-screen');
-    app.querySelector('[data-back]').onclick = function () { go('#/app'); };
-  }
-
+  // ---------- morning check-in, prefilled from night taps ----------
   function viewCheckin() {
-    var e = currentExp(), r = { wake: null, awake: null, hot: null, did: null, rested: null };
+    var e = currentExp(), k = nightKey(now()), n = nightOf(k);
+    var longest = n.wakes.reduce(function (mx, w) { return Math.max(mx, (w.back || w.at + 20 * 60000) - w.at); }, 0) / 60000;
+    var pre = n.wakes.length || n.done.length;
+    var r = {
+      wake: n.wakes.length ? Math.min(4, n.wakes.length) : null,
+      awake: n.wakes.length ? (longest < 10 ? 0 : longest < 30 ? 1 : longest < 60 ? 2 : 3) : null,
+      hot: n.wakes.length ? (n.wakes.some(function (w) { return w.hot; }) ? 1 : 0) : null,
+      did: n.done.indexOf('exp') !== -1 ? 1 : null,
+      rested: null
+    };
     function seg(key, labels) {
-      return '<div class="seg" role="group">' + labels.map(function (l, i) { return '<button class="opt" data-k="' + key + '" data-v="' + i + '" aria-pressed="false">' + l + '</button>'; }).join('') + '</div>';
+      return '<div class="seg" role="group">' + labels.map(function (l, i) { return '<button class="opt" data-k="' + key + '" data-v="' + i + '" aria-pressed="' + (r[key] === i) + '">' + l + '</button>'; }).join('') + '</div>';
     }
     screen('day',
       '<div class="topbar"><button class="icon-btn" data-back aria-label="Close">' + ICON.close + '</button><span class="step-count">30 sec</span></div>' +
       '<h1 class="q-title" style="margin-top:0">How was last night?</h1>' +
+      (pre ? '<p class="banner">Filled in from your night taps and tonight’s plan. Change anything that’s off.</p>' : '') +
       '<p class="ci-q">How many times did you wake up?</p>' + seg('wake', ['0', '1', '2', '3', '4+']) +
       '<p class="ci-q">Longest time awake</p>' + seg('awake', ['Under 10 min', '10–30 min', '30–60 min', 'Over an hour']) +
       '<p class="ci-q">Did heat or sweats wake you?</p>' + seg('hot', ['No', 'Yes']) +
       '<p class="ci-q">' + esc(e.ask) + '</p>' + seg('did', ['No', 'Yes']) +
       '<p class="ci-q">How rested do you feel?</p>' + seg('rested', ['1', '2', '3', '4', '5']) +
-      '<div class="spacer"></div><button class="btn btn-night btn-block" id="save" style="margin-top:24px">Save check-in</button>');
+      '<div class="spacer"></div><button class="btn btn-night btn-block" id="save" style="margin-top:24px">Save check-in</button>', 'sky-dawn');
     app.querySelectorAll('.seg .opt').forEach(function (b) {
       b.onclick = function () {
-        var k = b.dataset.k; r[k] = +b.dataset.v;
-        app.querySelectorAll('[data-k="' + k + '"]').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+        var key = b.dataset.k; r[key] = +b.dataset.v;
+        app.querySelectorAll('[data-k="' + key + '"]').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
       };
     });
     app.querySelector('#save').onclick = function () {
-      var missing = Object.keys(r).filter(function (k) { return r[k] === null; });
+      var missing = Object.keys(r).filter(function (x) { return r[x] === null; });
       if (missing.length) { toast('Answer all 5 questions to save'); return; }
-      var wk = weekCheckins(); if (wk.length >= 7) { toast('This week is complete. See your result.'); return go('#/app/insight'); }
-      state.checkins.push({ wake: r.wake, awake: r.awake, hot: !!r.hot, did: !!r.did, rested: r.rested + 1, at: Date.now() });
+      if (weekCheckins().length >= 7) { toast('This week is complete. See your result.'); return go('#/app/insight'); }
+      state.checkins.push({ key: k, wake: r.wake, awake: r.awake, hot: !!r.hot, did: !!r.did, rested: r.rested + 1, times: n.wakes.map(function (w) { return sinceNine(w.at); }), at: now() });
       save();
-      var n = weekCheckins().length;
-      toast(n >= 7 ? 'Night 7 logged. Your result is ready.' : 'Saved. Night ' + n + ' of 7.');
-      go(n >= 7 ? '#/app/insight' : '#/app');
+      var c = weekCheckins().length;
+      toast(c >= 7 ? 'Night 7 logged. Your result is ready.' : 'Saved. Night ' + c + ' of 7.');
+      go(c >= 7 ? '#/app/insight' : '#/app');
     };
     app.querySelector('[data-back]').onclick = function () { go('#/app'); };
   }
 
-  function avg(a) { return a.length ? a.reduce(function (s, x) { return s + x; }, 0) / a.length : null; }
-  function fmt(x) { return Math.round(x * 10) / 10; }
+  // ---------- week stats ----------
+  function weekStats(w) {
+    var c = state.checkins.slice(w * 7, w * 7 + 7).filter(Boolean);
+    if (!c.length) return null;
+    var on = c.filter(function (x) { return x.did; }), off = c.filter(function (x) { return !x.did; });
+    var s = {
+      n: c.length, exp: state.plan.weeks[w],
+      wake: avg(c.map(function (x) { return x.wake; })), awake: avg(c.map(function (x) { return x.awake; })),
+      rested: avg(c.map(function (x) { return x.rested; })), hot: c.filter(function (x) { return x.hot; }).length,
+      aOn: on.length ? avg(on.map(function (x) { return x.wake; })) : null, aOff: off.length ? avg(off.map(function (x) { return x.wake; })) : null,
+      times: c.reduce(function (a, x) { return a.concat(x.times || []); }, [])
+    };
+    s.score = Math.max(28, Math.min(95, Math.round(92 - s.wake * 12 - s.awake * 5 + (s.rested - 3) * 4)));
+    s.verdict = s.n < 7 || s.aOn == null || s.aOff == null ? null : (s.aOff - s.aOn >= 0.5 ? 'keep' : s.aOff - s.aOn <= -0.5 ? 'drop' : 'unclear');
+    return s;
+  }
+  var VERDICT = { keep: 'Keep it', drop: 'Drop it', unclear: 'No clear effect' };
 
   function viewInsight() {
     var e = currentExp(), wk = weekCheckins();
@@ -613,41 +811,114 @@
     var rOn = avg(on.map(function (c) { return c.rested; })), rOff = avg(off.map(function (c) { return c.rested; }));
     var head;
     if (wk.length < 3) head = 'Log ' + (3 - wk.length) + ' more night' + (3 - wk.length === 1 ? '' : 's') + ' to see a first pattern.';
-    else if (!on.length || !off.length) head = on.length ? 'You stuck with it every night. Compare against a normal night next week.' : 'No experiment nights yet. Try it tonight.';
+    else if (!on.length || !off.length) head = on.length ? 'You stuck with it every night. Compare against a normal night next week.' : 'No test nights yet. Try it tonight.';
     else {
       var diff = aOff - aOn;
       head = diff >= 0.5 ? 'You had <strong>' + fmt(diff) + ' fewer wake-ups</strong> on “' + esc(e.name) + '” nights.'
         : diff <= -0.5 ? 'This change didn’t help: ' + fmt(-diff) + ' more wake-ups. Good to know, cross it off.'
           : 'No clear difference yet. Wake-ups were about the same either way.';
     }
-    var maxW = 4, bw = 26, gap = 13, H = 94;
-    var bars = '', ticks = '';
+    var maxW = 4, bw = 26, gap = 13, H = 94, bars = '', ticks = '';
     for (var i = 0; i < 7; i++) {
       var c = wk[i], x = 8 + i * (bw + gap);
       if (c) { var h = Math.max(4, (Math.min(c.wake, maxW) / maxW) * 72); bars += '<g class="' + (c.did ? 'bar-on' : 'bar-off') + '"><rect x="' + x + '" y="' + (H - h) + '" width="' + bw + '" height="' + h + '" rx="5"/></g>'; }
-      else bars += '<rect x="' + x + '" y="' + (H - 4) + '" width="' + bw + '" height="4" rx="2" fill="none" stroke="#34407A" stroke-dasharray="3 3"/>';
+      else bars += '<rect x="' + x + '" y="' + (H - 4) + '" width="' + bw + '" height="4" rx="2" fill="none" stroke="#3A3366" stroke-dasharray="3 3"/>';
       ticks += '<text x="' + (x + bw / 2) + '" y="' + (H + 14) + '">' + (i + 1) + '</text>';
     }
-    var done = wk.length >= 7;
-    var free = state.sub && state.sub.plan === 'free';
-    var p = state.plan;
+    var done = wk.length >= 7, free = state.sub && state.sub.plan === 'free', p = state.plan;
     var nextExp = p.weeks[state.expIndex + 1] ? EXP[p.weeks[state.expIndex + 1]] : null;
     screen('day',
       '<div class="topbar"><button class="icon-btn" data-back aria-label="Back">' + ICON.back + '</button><span class="step-count">Week ' + (state.expIndex + 1) + '</span></div>' +
       '<p class="q-help" style="margin:0">' + esc(e.name) + ' · ' + wk.length + ' of 7 nights</p>' +
       '<h1 class="insight-head">' + head + '</h1>' +
       '<div class="chart-card"><svg class="sc-bars" viewBox="0 0 280 112" role="img" aria-label="Wake-ups per night">' + bars + '<g class="ticks">' + ticks + '</g></svg>' +
-      '<p class="sc-legend"><span class="k on"></span>Did the experiment <span class="k off"></span>Didn’t</p></div>' +
-      (on.length && off.length ? '<div class="stat-row"><div class="stat"><b>' + fmt(aOn) + '</b><span>wake-ups on experiment nights</span></div><div class="stat"><b>' + fmt(aOff) + '</b><span>wake-ups on other nights</span></div>' +
-        '<div class="stat"><b>' + fmt(rOn) + '/5</b><span>how rested, experiment nights</span></div><div class="stat"><b>' + fmt(rOff) + '/5</b><span>how rested, other nights</span></div></div>' : '') +
-      '<p class="disclaimer">Based on your own check-ins. One week is a first signal, not proof. That’s why every experiment can run twice.</p>' +
+      '<p class="sc-legend"><span class="k on"></span>Did the test <span class="k off"></span>Didn’t</p></div>' +
+      (on.length && off.length ? '<div class="stat-row"><div class="stat"><b>' + fmt(aOn) + '</b><span>wake-ups on test nights</span></div><div class="stat"><b>' + fmt(aOff) + '</b><span>wake-ups on other nights</span></div>' +
+        '<div class="stat"><b>' + fmt(rOn) + '/5</b><span>how rested, test nights</span></div><div class="stat"><b>' + fmt(rOff) + '/5</b><span>how rested, other nights</span></div></div>' : '') +
+      '<p class="disclaimer">Based on your own check-ins. One week is a first signal, not proof. That’s why every test can run twice.</p>' +
+      (done ? '<button class="btn btn-quiet btn-block" data-story>Share your week as a story</button><div id="story" hidden><video class="film story-in" src="media/story.mp4" poster="media/story.jpg" muted playsinline controls></video><p class="disclaimer">Preview of the shareable story format, shown with an example week. In the app it’s made from your own check-ins.</p></div>' : '') +
       (done && nextExp ? (free
         ? '<p class="q-help" style="margin:16px 0 8px">Next: ' + esc(nextExp.name) + '</p><a class="btn btn-night btn-block" href="#/paywall">Unlock week 2</a>'
         : '<p class="q-help" style="margin:16px 0 8px">Next: ' + esc(nextExp.name) + '</p><button class="btn btn-night btn-block" data-next>Start week ' + (state.expIndex + 2) + '</button>') : '') +
-      (!done ? '<a class="btn btn-night btn-block" href="#/app/checkin" style="margin-top:12px">Log last night</a>' : ''));
+      (!done ? '<a class="btn btn-night btn-block" href="#/app/checkin" style="margin-top:12px">Log last night</a>' : ''), 'sky-day');
     app.querySelector('[data-back]').onclick = function () { go('#/app'); };
     var nx = app.querySelector('[data-next]');
     if (nx) nx.onclick = function () { state.expIndex++; save(); toast('Week ' + (state.expIndex + 1) + ' starts tonight'); go('#/app'); };
+    var st = app.querySelector('[data-story]');
+    if (st) st.onclick = function () { var box = app.querySelector('#story'); box.hidden = false; st.hidden = true; var v = box.querySelector('video'); var pl = v.play(); if (pl) pl.catch(function () {}); };
+  }
+
+  // ---------- Progress: score trend, constellation, sleep recipe ----------
+  function viewProgress(sel) {
+    if (!state.plan) return go('#/quiz/0');
+    var weeks = []; for (var w = 0; w <= state.expIndex; w++) { var s = weekStats(w); if (s) weeks.push(s); }
+    var base = state.plan.score;
+    var pts = [{ l: 'Quiz', v: base }].concat(weeks.map(function (s, i) { return { l: 'Wk ' + (i + 1), v: s.score }; }));
+    // score trend
+    var W = 300, Hh = 130, x0 = 24, x1 = 284, y = function (v) { return 14 + (100 - v) * 0.9; };
+    var xs = pts.map(function (_, i) { return pts.length === 1 ? (x0 + x1) / 2 : x0 + (x1 - x0) * i / (pts.length - 1); });
+    var line = pts.length > 1 ? '<path d="M' + pts.map(function (p, i) { return xs[i].toFixed(1) + ' ' + y(p.v).toFixed(1); }).join(' L') + '" class="tr-line"/>' : '';
+    var trend = '<svg class="tl" viewBox="0 0 ' + W + ' ' + Hh + '" role="img" aria-label="Sleep Score: ' + pts.map(function (p) { return p.l + ' ' + p.v; }).join(', ') + '">' +
+      '<line x1="10" y1="' + y(50) + '" x2="290" y2="' + y(50) + '" class="tr-grid"/><text x="290" y="' + (y(50) - 5) + '" style="text-anchor:end" class="tr-ax">50</text>' + line +
+      pts.map(function (p, i) { return '<circle cx="' + xs[i].toFixed(1) + '" cy="' + y(p.v).toFixed(1) + '" r="' + (i === pts.length - 1 ? 7 : 5) + '" class="' + (i === 0 ? 'tr-base' : 'tr-pt') + '"/><text x="' + xs[i].toFixed(1) + '" y="' + (y(p.v) - 13).toFixed(1) + '" class="tr-v">' + p.v + '</text><text x="' + xs[i].toFixed(1) + '" y="126" class="tr-ax">' + p.l + '</text>'; }).join('') + '</svg>';
+    var cur = weeks[weeks.length - 1];
+    sel = sel == null ? (weeks.length ? 0 : null) : sel;
+    var chips = weeks.map(function (s, i) { return '<button class="chip" data-w="' + i + '" aria-pressed="' + (i === sel) + '">Week ' + (i + 1) + '</button>'; }).join('');
+    var sw = sel != null ? weeks[sel] : null;
+    var cons = sw ? dial({ stars: sw.times.map(function (m, i) { return { m: m, ring: (i % 3) * 9 }; }), center: '<b class="dial-num">' + sw.times.length + '</b><span>wake-ups in week ' + (sel + 1) + '</span>', label: 'Week ' + (sel + 1) + ': ' + sw.times.length + ' wake-ups', cls: 'dial-day' }) : '';
+    var recipe = weeks.filter(function (s) { return s.verdict; });
+    var keep = recipe.filter(function (s) { return s.verdict === 'keep'; });
+    var body = weeks.length ? (
+      '<section class="pcard"><h2>Sleep Score</h2>' + trend + '<p class="fine-d">From your quiz, then re-scored from each week’s check-ins.</p></section>' +
+      '<section class="pcard"><h2>Your nights as a sky</h2><p class="fine-d">Each star is a time you woke up. Fewer stars, better nights.</p><div class="chips" role="group" aria-label="Choose a week">' + chips + '</div>' + cons + '</section>' +
+      '<section class="pcard"><h2>Your sleep recipe</h2>' +
+      (recipe.length ? '<ul class="recipe">' + recipe.map(function (s) { return '<li class="v-' + s.verdict + '"><span class="vchip">' + VERDICT[s.verdict] + '</span><b>' + esc(EXP[s.exp].name) + '</b><small>' + fmt(s.aOn) + ' wake-ups on test nights vs ' + fmt(s.aOff) + ' on others</small></li>'; }).join('') + '</ul>' +
+        (keep.length ? '<p class="recipe-sum">What works for you: ' + esc(keep.map(function (s) { return EXP[s.exp].name.toLowerCase(); }).join(' + ')) + '.</p>' : '') : '<p class="fine-d">Finish week 1 to see your first result here.</p>') + '</section>' +
+      (cur ? '<div class="stat-row"><div class="stat"><b>' + (idx('wakeups') + 1) + ' → ' + fmt(cur.wake) + '</b><span>wake-ups a night, quiz vs this week</span></div><div class="stat"><b>' + fmt(cur.rested) + '/5</b><span>how rested this week</span></div></div>' : '')
+    ) : '<section class="pcard empty"><h2>No nights logged yet</h2><p>Do your first morning check-in and this page starts filling in. After 7 nights you get your first result.</p><a class="btn btn-night" href="#/app/checkin">Do a check-in</a></section>';
+    screen('day', '<header class="app-head"><h1 class="hello" style="margin:0">Progress</h1><a class="link-s" href="#/app/report">For my doctor</a></header>' + body + demoTools(), 'sky-day', 'progress');
+    app.querySelectorAll('[data-w]').forEach(function (b) { b.onclick = function () { viewProgress(+b.dataset.w); }; });
+    bindDemo(function () { viewProgress(); });
+  }
+
+  // ---------- Report for my doctor ----------
+  function viewReport() {
+    if (!state.plan) return go('#/quiz/0');
+    var all = state.checkins.filter(Boolean);
+    var weeks = []; for (var w = 0; w <= state.expIndex; w++) { var s = weekStats(w); if (s) weeks.push(s); }
+    var sym = picks('symptoms').filter(function (i) { return i !== 6; }).map(function (i) { return step('symptoms').opts[i]; });
+    var tried = picks('tried').filter(function (i) { return i !== 6; }).map(function (i) { return step('tried').opts[i]; });
+    var times = all.reduce(function (a, c) { return a.concat(c.times || []); }, []);
+    var typical = times.length ? fmtHM(Math.round(avg(times)) + 1260) : (answered('waketime') ? say('waketime') : '—');
+    var qs = [];
+    if (idx('sweats') >= 2) qs.push('Night sweats wake me ' + say('sweats') + '. Which treatments, hormonal or not, could fit me?');
+    qs.push(has('tried', 5) ? 'Is my current hormone therapy dose right for my sleep?' : 'Is hormone therapy an option for me?');
+    if (has('symptoms', 1) || has('symptoms', 2)) qs.push('Are the mood changes and anxiety I’ve noticed part of perimenopause?');
+    if (has('tried', 0) || has('tried', 1)) qs.push('Is it fine to keep taking melatonin or supplements?');
+    qs.push('Could something else be part of this, like sleep apnea, thyroid or iron levels?');
+    var rows = all.length ? [
+      ['Nights logged', all.length],
+      ['Wake-ups a night', fmt(avg(all.map(function (c) { return c.wake; }))) + ' (quiz: ' + (say('wakeups') || '—') + ')'],
+      ['Usual wake-up time', typical],
+      ['Nights with hot flashes or sweats', all.filter(function (c) { return c.hot; }).length + ' of ' + all.length],
+      ['How rested, 1 to 5', fmt(avg(all.map(function (c) { return c.rested; })))]
+    ] : [['Wake-ups a night', say('wakeups') || '—'], ['Usual wake-up time', typical], ['Hot flashes or sweats wake me', say('sweats') || '—'], ['Bad nights a week', say('badNights') || '—']];
+    screen('day',
+      '<header class="app-head no-print"><h1 class="hello" style="margin:0">For my doctor</h1><button class="btn btn-night btn-sm" data-print>Print or save as PDF</button></header>' +
+      '<p class="fine-d no-print">A one-page summary to bring to your appointment. Untick any question you don’t want on it.</p>' +
+      '<article class="report">' +
+      '<header class="rp-head"><h2>Sleep summary</h2><p>Prepared with SleepThrough on ' + nowDate().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) + (all.length ? ', covering ' + all.length + ' nights' : ', from my quiz answers') + '</p></header>' +
+      '<section><h3>About me</h3><dl class="rp-dl"><dt>Age</dt><dd>' + esc(say('age') || '—') + '</dd><dt>Periods</dt><dd>' + esc(say('cycle') || '—') + '</dd><dt>Also noticed</dt><dd>' + esc(sym.join(', ') || 'Nothing else') + '</dd></dl></section>' +
+      '<section><h3>My sleep</h3><dl class="rp-dl">' + rows.map(function (r) { return '<dt>' + esc(r[0]) + '</dt><dd>' + esc(String(r[1])) + '</dd>'; }).join('') + '</dl>' +
+      (times.length ? dial({ stars: times.map(function (m, i) { return { m: m, ring: (i % 3) * 9 }; }), center: '<b class="dial-num">' + times.length + '</b><span>wake-up times</span>', cls: 'dial-day dial-sm', label: 'All logged wake-up times' }) : '') + '</section>' +
+      '<section><h3>What I’ve tried</h3><ul class="rp-ul">' + tried.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') +
+      weeks.filter(function (s) { return s.verdict; }).map(function (s) { return '<li>' + esc(EXP[s.exp].name) + ' for 7 nights: ' + VERDICT[s.verdict].toLowerCase() + ' (' + fmt(s.aOn) + ' vs ' + fmt(s.aOff) + ' wake-ups)</li>'; }).join('') +
+      (!tried.length && !weeks.length ? '<li>Nothing yet</li>' : '') + '</ul></section>' +
+      '<section><h3>Questions I want to ask</h3>' + qs.map(function (q, i) { return '<label class="rp-q"><input type="checkbox" checked data-q="' + i + '"><span>' + esc(q) + '</span></label>'; }).join('') + '</section>' +
+      '<p class="rp-foot">Self-reported from morning check-ins and night taps. Not a diagnosis.</p></article>' + demoTools(), 'sky-day', 'report');
+    app.querySelector('[data-print]').onclick = function () { window.print(); };
+    app.querySelectorAll('[data-q]').forEach(function (c) { c.onchange = function () { c.closest('.rp-q').classList.toggle('off', !c.checked); }; });
+    bindDemo(viewReport);
   }
 
   function viewDevices() {
@@ -655,15 +926,16 @@
     screen('day',
       '<div class="topbar"><button class="icon-btn" data-back aria-label="Back">' + ICON.back + '</button><span></span></div>' +
       '<h1 class="q-title" style="margin-top:0">Connect a sleep tracker</h1>' +
-      '<p class="q-help">Your tracker adds wake-up times and heart rate to your check-ins. The morning check-in still works without one.</p>' +
+      '<p class="q-help">Your tracker adds wake-up times and heart rate to your check-ins. Night taps and the morning check-in work without one.</p>' +
       '<div class="actions">' + w.map(function (n) { return '<button class="action" data-w="' + n + '"><span class="ic">' + ICON.watch + '</span><span><b>' + n + '</b><small>Coming with the iOS app</small></span><span class="chev" aria-hidden="true">›</span></button>'; }).join('') + '</div>' +
-      '<p class="disclaimer" style="margin-top:18px">In this web preview, tracker sync is not live. Tap one to tell us which you use.</p>');
+      '<p class="disclaimer" style="margin-top:18px">In this web preview, tracker sync is not live. Tap one to tell us which you use.</p>', 'sky-day');
     app.querySelectorAll('[data-w]').forEach(function (b) { b.onclick = function () { state.tracker = b.dataset.w; save(); toast('Noted: we’ll let you know when ' + b.dataset.w + ' sync is ready.'); }; });
     app.querySelector('[data-back]').onclick = function () { go('#/app'); };
   }
 
   // ---------- router ----------
   function route() {
+    clearTimers();
     var h = location.hash || '#/';
     if (h === '#/' || h === '#' || h === '' || h === '#pricing') {
       app.hidden = true; landing.hidden = false;
@@ -679,13 +951,26 @@
     if (h === '#/result') return state.plan || Object.keys(state.answers).length ? viewResult() : go('#/quiz/0');
     if (h === '#/paywall') return viewPaywall();
     if (h === '#/app') return viewHome();
+    if (h === '#/app/night' || h === '#/app/3am') return viewNight();
     if (h === '#/app/tonight') return viewTonight();
-    if (h === '#/app/3am') return view3am();
     if (h === '#/app/checkin') return state.plan ? viewCheckin() : go('#/quiz/0');
     if (h === '#/app/insight') return state.plan ? viewInsight() : go('#/quiz/0');
+    if (h === '#/app/progress') return viewProgress();
+    if (h === '#/app/report') return viewReport();
     if (h === '#/app/devices') return viewDevices();
     go('#/');
   }
+  // Landing films: play only when visible; respect reduced motion.
+  (function films() {
+    var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var vids = Array.prototype.slice.call(document.querySelectorAll('video.film'));
+    if (reduce) { vids.forEach(function (v) { v.removeAttribute('autoplay'); v.pause(); v.controls = true; }); return; }
+    if (!('IntersectionObserver' in window)) { vids.forEach(function (v) { v.play && v.play().catch(function () {}); }); return; }
+    var io = new IntersectionObserver(function (es) {
+      es.forEach(function (e) { var v = e.target; if (e.isIntersecting) { if (v.preload === 'none') v.preload = 'auto'; var p = v.play(); if (p) p.catch(function () {}); } else v.pause(); });
+    }, { threshold: 0.35 });
+    vids.forEach(function (v) { io.observe(v); });
+  })();
   window.addEventListener('hashchange', function () { if ('speechSynthesis' in window) { try { speechSynthesis.cancel(); } catch (e) {} } route(); });
   route();
 })();

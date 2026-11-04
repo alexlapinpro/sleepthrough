@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en" data-resolution="landscape">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <script src="gsap.min.js"></script>
+    <style>
+      @font-face { font-family: "Young Serif"; src: url(fonts/young-serif-latin-400-normal.woff2) format("woff2"); }
+      @font-face { font-family: "Atkinson Next"; src: url(fonts/atkinson-hyperlegible-next-latin-400-normal.woff2) format("woff2"); font-weight: 400; }
+      @font-face { font-family: "Atkinson Next"; src: url(fonts/atkinson-hyperlegible-next-latin-700-normal.woff2) format("woff2"); font-weight: 700; }
+      :root { --ink: #F0EBF8; --dim: #B6AED3; --lamp: #F4CB6E; --lampink: #2A2110; --line: #3A3366; --card: #221D40; --cool: #8FD9CB; }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1920px; height: 1080px; overflow: hidden; background: #0B0918; }
+      #root { position: relative; width: 1920px; height: 1080px; overflow: hidden; color: var(--ink); font-family: "Atkinson Next", sans-serif;
+        background: radial-gradient(1100px 800px at 72% 40%, #2A2150 0%, #15112B 60%, #0B0918 100%); }
+      .clip { position: absolute; inset: 0; }
+      .copy { position: absolute; left: 150px; top: 330px; width: 860px; }
+      .step { font: 700 34px "Atkinson Next"; color: var(--lamp); margin-bottom: 26px; }
+      .head { font: 400 92px/1.08 "Young Serif"; letter-spacing: -0.01em; }
+      .sub { font: 400 36px/1.4 "Atkinson Next"; color: var(--dim); margin-top: 30px; width: 760px; }
+      .phone { position: absolute; left: 1180px; top: 90px; width: 500px; height: 900px; border-radius: 64px; background: #15112B; border: 3px solid var(--line); box-shadow: 0 40px 120px rgba(0,0,0,.45); overflow: hidden; }
+      .pin { position: absolute; inset: 0; padding: 70px 40px 40px; }
+      .pq { font: 400 40px/1.2 "Young Serif"; margin-bottom: 28px; }
+      .bar { height: 10px; border-radius: 10px; background: rgba(182,174,211,.25); margin-bottom: 40px; overflow: hidden; }
+      .bar i { display: block; height: 100%; width: 40%; background: var(--lamp); border-radius: 10px; }
+      .opt { border: 3px solid var(--line); background: var(--card); border-radius: 22px; padding: 24px 26px; font: 400 30px "Atkinson Next"; margin-bottom: 16px; }
+      .rank { display: grid; grid-template-columns: 50px 1fr; gap: 6px 16px; align-items: center; background: var(--card); border-radius: 22px; padding: 22px 24px; margin-bottom: 16px; }
+      .rank b { font: 400 44px "Young Serif"; color: var(--lamp); grid-row: span 2; }
+      .rank span { font: 700 30px "Atkinson Next"; }
+      .rank .rb { height: 12px; border-radius: 12px; background: var(--lamp); transform-origin: left; }
+      .lbl { font: 400 28px "Atkinson Next"; color: var(--dim); margin-bottom: 12px; }
+      .exp { font: 400 46px/1.15 "Young Serif"; margin-bottom: 40px; }
+      .dots { display: grid; grid-template-columns: repeat(7, 1fr); gap: 12px; margin-bottom: 40px; }
+      .dots i { height: 18px; border-radius: 18px; background: var(--line); }
+      .dots i.on { background: var(--lamp); transform-origin: left; }
+      .rowi { display: grid; grid-template-columns: 70px 1fr; gap: 16px; align-items: center; margin-bottom: 22px; font: 400 28px "Atkinson Next"; color: var(--dim); }
+      .rowi em { font-style: normal; width: 70px; height: 70px; border-radius: 50%; display: grid; place-items: center; background: var(--card); font: 400 28px "Young Serif"; color: var(--ink); }
+      .chart { position: relative; height: 300px; margin: 10px 0 30px; }
+      .chart i { position: absolute; bottom: 0; width: 46px; border-radius: 10px; transform-origin: bottom; }
+      .res { font: 400 44px/1.18 "Young Serif"; margin-bottom: 26px; }
+      .res b { font-weight: 400; color: var(--lamp); }
+      .keep { display: inline-block; background: var(--cool); color: #0B0918; font: 700 30px "Atkinson Next"; padding: 14px 30px; border-radius: 40px; }
+      .brand { position: absolute; left: 150px; top: 120px; font: 400 40px "Young Serif"; color: var(--ink); display: flex; align-items: center; gap: 16px; }
+      .brand svg { width: 38px; height: 38px; fill: var(--lamp); }
+      .foot { position: absolute; left: 150px; bottom: 100px; font: 400 28px "Atkinson Next"; color: var(--dim); }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="21" data-fps="30" data-width="1920" data-height="1080">
+      <div id="frame" class="clip" data-start="0" data-duration="21" data-track-index="0">
+        <p class="brand"><svg viewBox="0 0 24 24"><path d="M15 3a8 8 0 1 0 6 13A9 9 0 0 1 15 3z"/></svg>SleepThrough</p>
+        <div class="phone" id="phone">
+          <div class="pin" id="p1">
+            <div class="bar"><i id="p1bar"></i></div>
+            <p class="pq">When do you usually wake up in the night?</p>
+            <p class="opt">1–2 AM</p><p class="opt">2–3 AM</p><p class="opt" id="pick">3–4 AM</p><p class="opt">4–5 AM</p><p class="opt">It changes</p>
+          </div>
+          <div class="pin" id="p2">
+            <p class="lbl">Your likely suspects</p>
+            <div class="rank"><b>1</b><span>Evening wine</span><i class="rb" id="rb1" style="width:100%"></i></div>
+            <div class="rank"><b>2</b><span>Heat</span><i class="rb" id="rb2" style="width:72%"></i></div>
+            <div class="rank"><b>3</b><span>Caffeine</span><i class="rb" id="rb3" style="width:48%"></i></div>
+          </div>
+          <div class="pin" id="p3">
+            <p class="lbl">Week 1 test</p>
+            <p class="exp">No wine after 7 PM</p>
+            <div class="dots" id="dots"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+            <div class="rowi"><em>9:30</em>3-minute wind-down</div>
+            <div class="rowi"><em>3:07</em>One tap if you wake</div>
+            <div class="rowi"><em>7:15</em>30-second check-in</div>
+          </div>
+          <div class="pin" id="p4">
+            <p class="lbl">Day 7 · example result</p>
+            <p class="res">You had <b>2 fewer wake-ups</b> on nights without wine.</p>
+            <div class="chart" id="chart"></div>
+            <span class="keep" id="keep">Keep it</span>
+          </div>
+        </div>
+        <div class="copy" id="t1"><p class="step">Step 1 of 4</p><h1 class="head">Tell us about your nights.</h1><p class="sub">Three minutes of questions about waking, sweats, wine, coffee and stress.</p></div>
+        <div class="copy" id="t2"><p class="step">Step 2 of 4</p><h1 class="head">See what’s most likely waking you.</h1><p class="sub">Your answers, ranked into three suspects.</p></div>
+        <div class="copy" id="t3"><p class="step">Step 3 of 4</p><h1 class="head">Test one change for 7 nights.</h1><p class="sub">A plan for the evening, one tap at night, a check-in in the morning.</p></div>
+        <div class="copy" id="t4"><p class="step">Step 4 of 4</p><h1 class="head">Keep what works for you.</h1><p class="sub">Your own nights are the evidence. Then the next test.</p></div>
+        <p class="foot">Example screens. No pills, no diagnosis.</p>
+      </div>
+    </div>
+    <script>
+      var vals = [3, 1, 1, 3, 1, 0, 1], chart = document.getElementById('chart');
+      chart.innerHTML = vals.map(function (v, i) {
+        var h = Math.max(10, v / 3 * 280);
+        return '<i style="left:' + (i * 60) + 'px;height:' + h + 'px;background:' + (v >= 3 ? '#3A3366' : '#F4CB6E') + '"></i>';
+      }).join('');
+      var tl = gsap.timeline({ paused: true });
+      gsap.set(['#p2', '#p3', '#p4', '#t2', '#t3', '#t4'], { opacity: 0 });
+      gsap.set(['#rb1', '#rb2', '#rb3'], { scaleX: 0 });
+      gsap.set('#chart i', { scaleY: 0 });
+      gsap.set('#keep', { scale: 0 });
+      gsap.set('#p1bar', { width: '30%' });
+      // intro
+      tl.from('#phone', { y: 60, opacity: 0, duration: 0.8, ease: 'power3.out' }, 0);
+      tl.from('#t1', { x: -40, opacity: 0, duration: 0.7, ease: 'power3.out' }, 0.2);
+      // 1. quiz
+      tl.to('#p1bar', { width: '62%', duration: 0.8, ease: 'power2.inOut' }, 1.6);
+      tl.to('#pick', { borderColor: '#F4CB6E', backgroundColor: '#2C2752', duration: 0.25 }, 1.8);
+      tl.to('#pick', { scale: 1.03, duration: 0.15, yoyo: true, repeat: 1 }, 1.8);
+      // 2. suspects
+      tl.to(['#p1', '#t1'], { opacity: 0, duration: 0.4 }, 5);
+      tl.to(['#p2', '#t2'], { opacity: 1, duration: 0.5 }, 5.3);
+      tl.from('#t2', { x: -40, duration: 0.6, ease: 'power3.out' }, 5.3);
+      tl.to('#rb1', { scaleX: 1, duration: 0.7, ease: 'power3.out' }, 5.8);
+      tl.to('#rb2', { scaleX: 1, duration: 0.7, ease: 'power3.out' }, 6);
+      tl.to('#rb3', { scaleX: 1, duration: 0.7, ease: 'power3.out' }, 6.2);
+      // 3. seven nights
+      tl.to(['#p2', '#t2'], { opacity: 0, duration: 0.4 }, 10);
+      tl.to(['#p3', '#t3'], { opacity: 1, duration: 0.5 }, 10.3);
+      tl.from('#t3', { x: -40, duration: 0.6, ease: 'power3.out' }, 10.3);
+      document.querySelectorAll('#dots i').forEach(function (d, i) {
+        tl.to(d, { backgroundColor: i === 0 || i === 3 ? '#6F6890' : '#F4CB6E', duration: 0.2 }, 10.9 + i * 0.32);
+      });
+      // 4. result
+      tl.to(['#p3', '#t3'], { opacity: 0, duration: 0.4 }, 15);
+      tl.to(['#p4', '#t4'], { opacity: 1, duration: 0.5 }, 15.3);
+      tl.from('#t4', { x: -40, duration: 0.6, ease: 'power3.out' }, 15.3);
+      tl.to('#chart i', { scaleY: 1, duration: 0.5, ease: 'power3.out', stagger: 0.12 }, 15.7);
+      tl.to('#keep', { scale: 1, duration: 0.45, ease: 'back.out(2.2)' }, 16.9);
+      tl.to('#frame', { opacity: 0, duration: 0.5 }, 20.5);
+      tl.set({}, {}, 21);
+      window.__timelines = window.__timelines || {};
+      window.__timelines["main"] = tl;
+      tl.seek(0);
+    </script>
+  </body>
+</html>

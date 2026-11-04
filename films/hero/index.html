@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en" data-resolution="square">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1080" />
+    <script src="gsap.min.js"></script>
+    <style>
+      @font-face { font-family: "Young Serif"; src: url(fonts/young-serif-latin-400-normal.woff2) format("woff2"); }
+      @font-face { font-family: "Atkinson Next"; src: url(fonts/atkinson-hyperlegible-next-latin-400-normal.woff2) format("woff2"); font-weight: 400; }
+      @font-face { font-family: "Atkinson Next"; src: url(fonts/atkinson-hyperlegible-next-latin-700-normal.woff2) format("woff2"); font-weight: 700; }
+      :root { --ground: #15112B; --deep: #0B0918; --ink: #F0EBF8; --dim: #B6AED3; --lamp: #F4CB6E; --dusk: #A99BE6; --dawn: #F7BC9F; }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1080px; height: 1080px; overflow: hidden; background: var(--deep); }
+      #root { position: relative; width: 1080px; height: 1080px; overflow: hidden; font-family: "Atkinson Next", sans-serif; color: var(--ink);
+        background: radial-gradient(900px 700px at 50% 30%, #2A2150 0%, #15112B 55%, #0B0918 100%); }
+      .clip { position: absolute; inset: 0; }
+      .speck { position: absolute; width: 3px; height: 3px; border-radius: 50%; background: #CFC7EE; }
+      #dawn { position: absolute; left: 0; right: 0; bottom: 0; height: 520px; background: radial-gradient(700px 360px at 50% 100%, rgba(247,188,159,.55), rgba(247,188,159,0) 70%); opacity: 0; }
+      svg#dial { position: absolute; left: 0; top: 0; width: 1080px; height: 1080px; }
+      .arcdot { fill: rgba(182,174,211,.45); }
+      .tick { stroke: rgba(182,174,211,.7); stroke-width: 3; }
+      .lbl { fill: var(--dim); font: 400 30px "Atkinson Next"; text-anchor: middle; }
+      .star { position: absolute; width: 34px; height: 34px; margin: -17px 0 0 -17px; border-radius: 50%; background: radial-gradient(circle, #FFE6A8 0 30%, rgba(244,203,110,.35) 32% 60%, rgba(244,203,110,0) 62%); transform: scale(0); }
+      .bed { position: absolute; width: 30px; height: 30px; margin: -15px 0 0 -15px; border-radius: 50%; border: 5px solid var(--dusk); opacity: 0; }
+      .sun { position: absolute; width: 30px; height: 30px; margin: -15px 0 0 -15px; border-radius: 50%; background: var(--dawn); opacity: 0; }
+      #hand { position: absolute; left: 538px; top: 160px; width: 4px; height: 70px; border-radius: 4px; background: var(--ink); transform-origin: 2px 420px; opacity: 0; }
+      .week { position: absolute; left: 0; right: 0; top: 34px; text-align: center; font: 700 34px "Atkinson Next"; letter-spacing: .01em; color: var(--dim); opacity: 0; }
+      .num { position: absolute; left: 0; right: 0; top: 420px; text-align: center; font: 400 240px/1 "Young Serif"; color: var(--ink); opacity: 0; }
+      .cap { position: absolute; left: 0; right: 0; top: 690px; text-align: center; font: 400 40px "Atkinson Next"; color: var(--dim); opacity: 0; }
+      #slept { position: absolute; left: 0; right: 0; top: 880px; text-align: center; font: 400 64px "Young Serif"; color: var(--ink); opacity: 0; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="11" data-fps="30" data-width="1080" data-height="1080">
+      <div id="scene" class="clip" data-start="0" data-duration="11" data-track-index="0">
+        <div id="specks"></div>
+        <div id="dawn"></div>
+        <svg id="dial" viewBox="0 0 1080 1080"></svg>
+        <div id="bed" class="bed"></div>
+        <div id="sun" class="sun"></div>
+        <div id="s1" class="star"></div>
+        <div id="s2" class="star"></div>
+        <div id="s3" class="star"></div>
+        <div id="hand"></div>
+        <p id="w1" class="week">Week 1</p>
+        <p id="w4" class="week">Week 4</p>
+        <p class="num" id="n0">0</p><p class="num" id="n1">1</p><p class="num" id="n2">2</p><p class="num" id="n3">3</p><p class="num" id="n1b">1</p>
+        <p class="cap" id="c1">wake-ups that night</p>
+        <p class="cap" id="c4">wake-up that night</p>
+        <p id="slept">Most nights, you sleep through.</p>
+      </div>
+    </div>
+    <script>
+      // Geometry: 9 PM to 7 AM on a 240° arc. All positions are fixed numbers, so every frame is deterministic.
+      var CX = 540, CY = 580, R = 380;
+      function ang(m) { return -120 + 240 * m / 600; }
+      function pt(m, r) { var a = ang(m) * Math.PI / 180; return [CX + r * Math.sin(a), CY - r * Math.cos(a)]; }
+      var svg = document.getElementById('dial'), html = '';
+      for (var i = 0; i <= 60; i++) { var p = pt(i * 10, R); html += '<circle class="arcdot" cx="' + p[0].toFixed(1) + '" cy="' + p[1].toFixed(1) + '" r="3"/>'; }
+      ['10 PM', '12 AM', '2 AM', '4 AM', '6 AM'].forEach(function (l, i) {
+        var m = 60 + i * 120, a = pt(m, R - 18), b = pt(m, R + 18), c = pt(m, R + 62);
+        html += '<line class="tick" x1="' + a[0].toFixed(1) + '" y1="' + a[1].toFixed(1) + '" x2="' + b[0].toFixed(1) + '" y2="' + b[1].toFixed(1) + '"/><text class="lbl" x="' + c[0].toFixed(1) + '" y="' + (c[1] + 10).toFixed(1) + '">' + l + '</text>';
+      });
+      svg.innerHTML = '<g id="dialg" opacity="0">' + html + '</g>';
+      function place(id, m) { var p = pt(m, R), el = document.getElementById(id); el.style.left = p[0] + 'px'; el.style.top = p[1] + 'px'; }
+      place('bed', 90); place('sun', 585); place('s1', 292); place('s2', 367); place('s3', 460);
+      var sp = document.getElementById('specks'), seeds = [[80, 120], [210, 60], [930, 140], [1010, 300], [60, 420], [990, 520], [150, 760], [900, 820], [330, 200], [760, 90], [470, 40], [620, 980], [40, 980], [1040, 940]];
+      sp.innerHTML = seeds.map(function (s, i) { return '<i class="speck" style="left:' + s[0] + 'px;top:' + s[1] + 'px;opacity:' + (0.25 + (i % 4) * 0.15) + '"></i>'; }).join('');
+
+      var tl = gsap.timeline({ paused: true });
+      var A0 = ang(90), A1 = ang(585);
+      // week 1: sweep, three wake-ups
+      tl.to('#dialg', { attr: { opacity: 1 }, duration: 0.8, ease: 'power2.out' }, 0);
+      tl.to(['#bed', '#sun'], { opacity: 1, duration: 0.6 }, 0.3);
+      tl.to(['#w1', '#c1'], { opacity: 1, duration: 0.6 }, 0.3);
+      tl.to('#n0', { opacity: 1, duration: 0.5 }, 0.4);
+      tl.set('#hand', { rotation: A0 }, 0);
+      tl.to('#hand', { opacity: 1, duration: 0.4 }, 0.5);
+      tl.to('#hand', { rotation: A1, duration: 4.4, ease: 'none' }, 0.6);
+      var hit = function (m) { return 0.6 + 4.4 * (m - 90) / 495; };
+      [['#s1', 292, '#n0', '#n1'], ['#s2', 367, '#n1', '#n2'], ['#s3', 460, '#n2', '#n3']].forEach(function (h) {
+        var t = hit(h[1]);
+        tl.to(h[0], { scale: 1, duration: 0.35, ease: 'back.out(2.4)' }, t);
+        tl.to(h[2], { opacity: 0, duration: 0.15 }, t);
+        tl.to(h[3], { opacity: 1, duration: 0.2 }, t + 0.05);
+      });
+      // week 4: the same night, mostly quiet
+      tl.to(['#s1', '#s3'], { scale: 0, opacity: 0, duration: 0.5, ease: 'power2.in' }, 5.1);
+      tl.to('#s2', { scale: 0.6, duration: 0.4 }, 5.1);
+      tl.to(['#w1', '#c1', '#n3'], { opacity: 0, duration: 0.4 }, 5.1);
+      tl.to(['#w4', '#c4', '#n1b'], { opacity: 1, duration: 0.5 }, 5.45);
+      tl.to('#hand', { opacity: 0, duration: 0.25 }, 5.05);
+      tl.set('#hand', { rotation: A0 }, 5.35);
+      tl.to('#hand', { opacity: 1, duration: 0.25 }, 5.4);
+      tl.to('#hand', { rotation: A1, duration: 3, ease: 'none' }, 5.6);
+      tl.to('#s2', { scale: 1, duration: 0.3, ease: 'back.out(2)' }, 5.6 + 3 * (367 - 90) / 495);
+      tl.to('#dawn', { opacity: 1, duration: 1.2, ease: 'sine.inOut' }, 7.8);
+      tl.to('#sun', { scale: 1.5, duration: 0.6, ease: 'back.out(2)' }, 8.5);
+      tl.to('#slept', { opacity: 1, y: -10, duration: 0.6, ease: 'power2.out' }, 7.9);
+      // close the loop: fade back to the empty night
+      tl.to(['#dialg'], { attr: { opacity: 0 }, duration: 0.6 }, 10.3);
+      tl.to(['#bed', '#sun', '#s2', '#hand', '#w4', '#c4', '#n1b', '#slept', '#dawn'], { opacity: 0, duration: 0.6 }, 10.3);
+      tl.set({}, {}, 11);
+      window.__timelines = window.__timelines || {};
+      window.__timelines["main"] = tl;
+      tl.seek(0);
+    </script>
+  </body>
+</html>

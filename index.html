@@ -7,9 +7,8 @@
 <meta name="description" content="Find what wakes you at 3 AM in perimenopause — wine, caffeine, stress, screens or night sweats — with one small 7-day experiment at a time. No pills.">
 <meta property="og:title" content="SleepThrough — awake at 3:07 again?">
 <meta property="og:description" content="A sleep coach for women 40–55 in perimenopause. One 7-day experiment at a time. No pills.">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&display=swap" rel="stylesheet">
+<link rel="preload" href="fonts/young-serif-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/atkinson-hyperlegible-next-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="styles.css">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23161C38'/%3E%3Cpath d='M20 7a9 9 0 1 0 5 16A10 10 0 0 1 20 7z' fill='%23F4CB6E'/%3E%3C/svg%3E">
 </head>
@@ -35,6 +34,10 @@
         <a class="btn btn-lamp" href="#/quiz/0">Take the 3-minute sleep quiz</a>
         <p class="fine">For women 40–55. Free quiz, no account needed.</p>
       </div>
+      <figure class="hero-film">
+        <video class="film" src="media/hero.mp4" poster="media/hero.jpg" autoplay muted loop playsinline preload="auto" aria-describedby="hero-film-cap"></video>
+        <figcaption id="hero-film-cap">One night on the SleepThrough dial: three wake-ups in week 1, one in week 4. Example.</figcaption>
+      </figure>
     </div>
   </section>
 
@@ -76,10 +79,11 @@
   <section class="band paper">
     <div class="wrap">
       <h2>How it works</h2>
+      <video class="film film-wide" src="media/explainer.mp4" poster="media/explainer.jpg" muted loop playsinline preload="none" data-inview aria-label="Animated walkthrough: quiz, three suspects, a 7-night test, and the day 7 result"></video>
       <ol class="steps">
         <li><h3>Tell us about your nights</h3><p>About 25 quick questions about your nights, your body, your days and your evenings. Three minutes.</p></li>
         <li><h3>Get your likely suspects</h3><p>Your Sleep Score and the three things most likely to be waking you, ranked.</p></li>
-        <li><h3>Test one change for 7 nights</h3><p>For example: no wine after 7 PM. Each evening, a 3-minute wind-down. Each morning, a 30-second check-in.</p></li>
+        <li><h3>Test one change for 7 nights</h3><p>For example: no wine after 7 PM. A plan for the evening, one tap if you wake at night, a 30-second check-in in the morning.</p></li>
         <li><h3>See what actually works for you</h3><p>On day 7 you get a clear answer, like “2 fewer wake-ups on nights without wine.” Then the next test.</p></li>
       </ol>
     </div>
@@ -92,22 +96,22 @@
         <p>Sleep sounds help you relax. Supplements are a guess. SleepThrough tells you which change made the difference for your body, using your own nights as the evidence.</p>
         <p class="muted">Connect Apple Watch, Oura, Fitbit or Whoop if you have one. You don't need one.</p>
       </div>
-      <figure class="sample-card" aria-label="Example of a day 7 result">
-        <p class="sc-label">Week 1 result · No wine after 7 PM</p>
-        <p class="sc-head">You had <strong>2 fewer wake-ups</strong> on nights without wine.</p>
-        <svg class="sc-bars" viewBox="0 0 280 110" role="img" aria-label="Wake-ups per night over 7 nights: 3, 1, 1, 3, 1, 0, 1">
-          <g class="bar-off"><rect x="8" y="22" width="26" height="72" rx="5"/></g>
-          <g class="bar-on"><rect x="47" y="70" width="26" height="24" rx="5"/></g>
-          <g class="bar-on"><rect x="86" y="70" width="26" height="24" rx="5"/></g>
-          <g class="bar-off"><rect x="125" y="22" width="26" height="72" rx="5"/></g>
-          <g class="bar-on"><rect x="164" y="70" width="26" height="24" rx="5"/></g>
-          <g class="bar-on"><rect x="203" y="90" width="26" height="4" rx="2"/></g>
-          <g class="bar-on"><rect x="242" y="70" width="26" height="24" rx="5"/></g>
-          <g class="ticks"><text x="21" y="108">M</text><text x="60" y="108">T</text><text x="99" y="108">W</text><text x="138" y="108">T</text><text x="177" y="108">F</text><text x="216" y="108">S</text><text x="255" y="108">S</text></g>
-        </svg>
-        <p class="sc-legend"><span class="k on"></span>Did the experiment <span class="k off"></span>Didn't</p>
-        <figcaption class="muted">Example result. Yours will be based on your own check-ins.</figcaption>
+      <figure class="story-phone">
+        <video class="film" src="media/story.mp4" poster="media/story.jpg" muted loop playsinline preload="none" data-inview aria-describedby="story-cap"></video>
+        <figcaption id="story-cap">Example day 7 result, shareable as a story. Yours comes from your own check-ins.</figcaption>
       </figure>
+    </div>
+  </section>
+
+  <section class="band night feats">
+    <div class="wrap">
+      <h2>Made for the hours you actually struggle with.</h2>
+      <div class="feat-grid">
+        <div><h3>Evening</h3><p>Tonight’s plan, timed to your bedtime: last drink, cool room, wind-down. It tells you what’s next and when.</p></div>
+        <div><h3>3 AM</h3><p>A dim night mode. One tap logs the wake-up. Cool down from a hot flash, or park the thought that won’t let go.</p></div>
+        <div><h3>Morning</h3><p>Your check-in is already filled in from the night. Parked thoughts are waiting on your list, not in your head.</p></div>
+        <div><h3>At the doctor</h3><p>A one-page summary of your nights, what you tried and the questions you want to ask. Print it or save it as a PDF.</p></div>
+      </div>
     </div>
   </section>
 
