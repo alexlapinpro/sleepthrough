@@ -11,21 +11,73 @@
   var state = Object.assign({ answers: {}, email: '', plan: null, sub: null, checkins: [], expIndex: 0 }, load());
   function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* private mode: keep in memory */ } }
 
-  // ---------- quiz ----------
-  var QUIZ = [
-    { id: 'age', q: 'How old are you?', opts: ['Under 40', '40–44', '45–49', '50–55', '56 or older'] },
-    { id: 'cycle', q: 'How has your period changed in the last year?', help: 'This tells us where you might be in the transition. It stays on your device.', opts: ['Still regular', 'Less regular, or skipping months', 'Stopped 12 or more months ago', 'Not sure, or not applicable'] },
-    { id: 'problem', q: 'What bothers you most at night?', opts: ['Falling asleep', 'Waking up between 2 and 4 AM', 'Waking too early and staying up', 'All of these'] },
-    { id: 'wakeups', q: 'On a typical night, how many times do you wake up?', opts: ['Once or not at all', 'Twice', 'Three times', 'Four or more'] },
-    { id: 'sweats', q: 'How often do hot flashes or night sweats wake you?', opts: ['Never', 'A few times a month', 'Most weeks', 'Most nights'] },
-    { id: 'wine', q: 'How many evenings a week do you have a drink?', opts: ['None', '1 or 2', '3 or 4', '5 or more'] },
-    { id: 'caffeine', q: 'When do you have your last coffee, tea or soda?', opts: ['Before noon', 'Between noon and 3 PM', 'After 3 PM', "I don't have caffeine"] },
-    { id: 'screens', q: 'What do you usually do in the last hour before bed?', opts: ['Phone or TV in bed', 'Work or email', 'Read or wind down', 'It varies'] },
-    { id: 'stress', q: 'When you wake at night, how often does your mind start racing?', opts: ['Rarely', 'Sometimes', 'Often', 'Almost always'] },
-    { id: 'room', q: 'How does your bedroom feel at night?', opts: ['Cool', 'Comfortable', 'Warm', 'I wake up too hot'] },
-    { id: 'wearable', q: 'Do you wear a sleep tracker?', help: 'Optional. A 30-second morning check-in works without one.', opts: ['Apple Watch', 'Oura', 'Fitbit', 'Whoop', 'No tracker'] },
-    { id: 'goal', q: 'What would change most if you slept through the night?', opts: ['More energy at work', 'A better mood with my family', 'Less coffee to get through the day', 'Feeling like myself again'] }
+  // ---------- quiz flow ----------
+  // Questions start from her experience (nights, body, days), not from our solution.
+  // "info" steps are the you're-not-alone screens: real, sourced numbers only.
+  var FLOW = [
+    { sec: 'About you', id: 'age', q: 'How old are you?', opts: ['Under 40', '40–44', '45–49', '50–55', '56 or older'] },
+    { sec: 'About you', id: 'cycle', q: 'How has your period changed in the last year?', help: 'This tells us where you might be in the transition. It stays on your device.', opts: ['Still regular', 'Less regular, or skipping months', 'Stopped 12 or more months ago', 'Not sure, or not applicable'] },
+    { sec: 'About you', info: 'short' },
+
+    { sec: 'Your nights', id: 'problem', q: 'What bothers you most at night?', opts: ['Falling asleep', 'Waking up between 2 and 4 AM', 'Waking too early and staying up', 'All of these'] },
+    { sec: 'Your nights', id: 'waketime', q: 'When do you usually wake up in the night?', opts: ['Before 1 AM', '1–2 AM', '2–3 AM', '3–4 AM', '4–5 AM', 'It changes'],
+      say: ['before 1 AM', 'between 1 and 2 AM', 'between 2 and 3 AM', 'between 3 and 4 AM', 'between 4 and 5 AM', 'at different times'] },
+    { sec: 'Your nights', id: 'wakeups', q: 'On a typical night, how many times do you wake up?', opts: ['Once or not at all', 'Twice', 'Three times', 'Four or more'],
+      say: ['once or not at all', 'twice', 'three times', 'four or more times'] },
+    { sec: 'Your nights', id: 'awakeLong', q: 'Once you’re awake, how long until you fall back asleep?', opts: ['Under 15 minutes', '15–30 minutes', '30–60 minutes', 'Over an hour, or not at all'],
+      say: ['under 15 minutes', '15–30 minutes', '30–60 minutes', 'over an hour'] },
+    { sec: 'Your nights', id: 'awakeDo', multi: true, none: 5, q: 'What do you do while you lie awake?', help: 'Pick all that apply.', opts: ['Check the time', 'Scroll my phone', 'Replay tomorrow’s to-do list', 'Kick off the covers', 'Get up for the bathroom', 'Just lie there'] },
+    { sec: 'Your nights', id: 'badNights', q: 'How many bad nights in a typical week?', opts: ['1 or 2', '3 or 4', '5 or 6', 'Every night'],
+      say: ['1–2', '3–4', '5–6', '7'] },
+    { sec: 'Your nights', info: 'staying' },
+
+    { sec: 'Your body', id: 'sweats', q: 'How often do hot flashes or night sweats wake you?', opts: ['Never', 'A few times a month', 'Most weeks', 'Most nights'],
+      say: ['never', 'a few times a month', 'most weeks', 'most nights'] },
+    { sec: 'Your body', id: 'symptoms', multi: true, none: 6, q: 'What else have you noticed in the last year or two?', help: 'Pick all that apply.', opts: ['Brain fog', 'A shorter fuse', 'Anxiety out of nowhere', 'Weight around the middle', 'Achy joints', 'Low energy all day', 'None of these'] },
+    { sec: 'Your body', info: 'heat' },
+
+    { sec: 'Your days', id: 'energy', q: 'How’s your energy at 3 PM?', opts: ['Fine', 'Dipping', 'Running on coffee', 'I could nap at my desk'] },
+    { sec: 'Your days', id: 'cups', q: 'How many cups of coffee, tea or soda a day?', opts: ['None', '1', '2', '3', '4 or more'],
+      say: ['No caffeine', '1 cup', '2 cups', '3 cups', '4+ cups'] },
+    { sec: 'Your days', id: 'caffeine', when: function () { return idx('cups') > 0; }, q: 'When do you have your last coffee, tea or soda?', opts: ['Before noon', 'Between noon and 3 PM', 'After 3 PM', 'It varies'],
+      say: ['before noon', 'between noon and 3 PM', 'after 3 PM', 'at different times'] },
+    { sec: 'Your days', info: 'caffeine', when: function () { return idx('cups') > 0; } },
+    { sec: 'Your days', id: 'work', q: 'How have bad nights affected your work?', opts: ['Not much', 'Harder to focus', 'More mistakes than usual', 'I’ve called in sick or cut hours', 'I don’t work outside the home'] },
+    { sec: 'Your days', info: 'work' },
+
+    { sec: 'Your evenings', id: 'wine', q: 'How many evenings a week do you have a drink?', opts: ['None', '1 or 2', '3 or 4', '5 or more'],
+      say: ['no evenings', '1–2 evenings a week', '3–4 evenings a week', '5+ evenings a week'] },
+    { sec: 'Your evenings', id: 'lastDrink', when: function () { return idx('wine') > 0; }, q: 'When do you usually finish your last drink?', opts: ['Before 7 PM', '7–9 PM', 'After 9 PM', 'Right before bed'],
+      say: ['before 7 PM', 'between 7 and 9 PM', 'after 9 PM', 'right before bed'] },
+    { sec: 'Your evenings', info: 'alcohol', when: function () { return idx('wine') > 0; } },
+    { sec: 'Your evenings', id: 'screens', q: 'What do you usually do in the last hour before bed?', opts: ['Phone or TV in bed', 'Work or email', 'Read or wind down', 'It varies'],
+      say: ['Phone or TV in bed', 'Work or email', 'Reading', 'A mix of things'] },
+    { sec: 'Your evenings', id: 'room', q: 'How does your bedroom feel at night?', opts: ['Cool', 'Comfortable', 'Warm', 'I wake up too hot'],
+      say: ['cool', 'comfortable', 'warm', 'too hot'] },
+
+    { sec: 'Your mind', id: 'stress', q: 'When you wake at night, how often does your mind start racing?', opts: ['Rarely', 'Sometimes', 'Often', 'Almost always'],
+      say: ['rarely', 'sometimes', 'often', 'almost always'] },
+    { sec: 'Your mind', id: 'tried', multi: true, none: 6, q: 'What have you already tried for sleep?', help: 'Pick all that apply.', opts: ['Melatonin', 'Magnesium or other supplements', 'A sleep or meditation app', 'Cutting back on caffeine', 'Asking my doctor', 'Hormone therapy', 'Nothing yet'] },
+    { sec: 'Your mind', info: 'guess' },
+
+    { sec: 'Your plan', id: 'goal', q: 'What would change most if you slept through the night?', opts: ['More energy at work', 'A better mood with my family', 'Less coffee to get through the day', 'Feeling like myself again'] },
+    { sec: 'Your plan', id: 'minutes', q: 'How much time can you give this each day?', help: 'Most days it’s a 3-minute wind-down and a 30-second check-in.', opts: ['5 minutes', '10 minutes', '15 minutes', '20 minutes or more'],
+      say: ['5 minutes', '10 minutes', '15 minutes', '20 minutes'] },
+    { sec: 'Your plan', id: 'wearable', q: 'Do you wear a sleep tracker?', help: 'Optional. A 30-second morning check-in works without one.', opts: ['Apple Watch', 'Oura', 'Fitbit', 'Whoop', 'No tracker'] },
+    { sec: 'Your plan', info: 'preview' }
   ];
+
+  function step(id) { for (var i = 0; i < FLOW.length; i++) if (FLOW[i].id === id) return FLOW[i]; return null; }
+  function idx(id) { var a = state.answers[id]; return typeof a === 'number' ? a : 0; }
+  function answered(id) { return typeof state.answers[id] === 'number'; }
+  function picks(id) { var a = state.answers[id]; return Array.isArray(a) ? a : []; }
+  function has(id, i) { return picks(id).indexOf(i) !== -1; }
+  function say(id) { var s = step(id); if (!s || !answered(id)) return ''; return (s.say || s.opts)[state.answers[id]]; }
+  function visible(s) { return !s.when || s.when(); }
+  function nextIndex(n) { for (var i = n + 1; i < FLOW.length; i++) if (visible(FLOW[i])) return i; return -1; }
+  function prevIndex(n) { for (var i = n - 1; i >= 0; i--) if (visible(FLOW[i])) return i; return -1; }
+  function goNext(n) { var i = nextIndex(n); go(i === -1 ? '#/email' : '#/quiz/' + i); }
+  function goPrev(n) { var i = prevIndex(n); go(i === -1 ? '#/' : '#/quiz/' + i); }
 
   // ---------- experiments ----------
   var EXP = {
@@ -37,27 +89,34 @@
     rhythm: { name: 'Same wake time every day', why: 'A fixed wake time, even on weekends, makes you sleepy at the same time each night.', how: 'Pick a time you can keep 7 days in a row. Get daylight within 30 minutes of waking.', ask: 'Did you get up at your set time?' }
   };
 
-  function idx(id) { var a = state.answers[id]; return typeof a === 'number' ? a : 0; }
+  var MICRO = [
+    { id: 'm_wired', q: 'Quick one: do you often feel tired but wired at bedtime?' },
+    { id: 'm_hot', q: 'Do you wake up hot even when the room is cool?' },
+    { id: 'm_changed', q: 'Has your sleep changed in the last 2–3 years?' }
+  ];
+  function yes(id) { return state.answers[id] === 1; }
 
   function analyze() {
     var w = {
-      alcohol: idx('wine') * 3,
-      heat: idx('sweats') * 2 + (idx('room') >= 2 ? idx('room') : 0),
-      caffeine: [0, 3, 6, 0][idx('caffeine')],
-      mind: idx('stress') * 2 + (idx('screens') === 1 ? 2 : 0),
-      screens: [5, 3, 0, 2][idx('screens')],
-      rhythm: 2
+      alcohol: idx('wine') * 3 + (idx('wine') > 0 && idx('lastDrink') >= 2 ? 2 : 0),
+      heat: idx('sweats') * 2 + (idx('room') >= 2 ? idx('room') : 0) + (has('awakeDo', 3) ? 2 : 0) + (yes('m_hot') ? 1 : 0),
+      caffeine: idx('cups') === 0 ? 0 : [0, 3, 6, 2][idx('caffeine')] + (idx('cups') >= 3 ? 2 : 0) + (idx('energy') >= 2 ? 1 : 0),
+      mind: idx('stress') * 2 + (idx('screens') === 1 ? 2 : 0) + (has('awakeDo', 2) ? 2 : 0) + (yes('m_wired') ? 1 : 0),
+      screens: [5, 3, 0, 2][idx('screens')] + (has('awakeDo', 1) ? 2 : 0),
+      rhythm: 2 + (idx('waketime') === 5 ? 1 : 0)
     };
     var ranked = Object.keys(w).sort(function (a, b) { return w[b] - w[a]; });
     var score = 100
-      - idx('wakeups') * 8
-      - idx('sweats') * 5
-      - idx('wine') * 5
-      - [0, 3, 8, 0][idx('caffeine')]
-      - [6, 6, 0, 3][idx('screens')]
-      - idx('stress') * 4
-      - [0, 0, 4, 7][idx('room')]
-      - (idx('problem') === 3 ? 6 : 0);
+      - idx('wakeups') * 7
+      - idx('awakeLong') * 3
+      - idx('badNights') * 3
+      - idx('sweats') * 4
+      - idx('wine') * 4
+      - (idx('cups') === 0 ? 0 : [0, 3, 7, 3][idx('caffeine')])
+      - [5, 5, 0, 3][idx('screens')]
+      - idx('stress') * 3
+      - [0, 0, 3, 6][idx('room')]
+      - (idx('problem') === 3 ? 5 : 0);
     score = Math.max(28, Math.min(92, score));
     var top = ranked.slice(0, 3);
     var plan = top.slice();
@@ -65,15 +124,22 @@
     return { score: score, suspects: top, weeks: plan.slice(0, 4) };
   }
 
-  var SUSPECT_NOTE = {
-    alcohol: 'Evening drinks wear off around 3 AM',
-    heat: 'Night sweats plus a warm room',
-    caffeine: 'Afternoon caffeine keeps sleep light',
-    mind: 'A racing mind when you wake',
-    screens: 'Screens late in the evening',
-    rhythm: 'An irregular wake time'
-  };
   var SUSPECT_NAME = { alcohol: 'Evening wine', heat: 'Heat', caffeine: 'Caffeine', mind: 'Racing mind', screens: 'Screens', rhythm: 'Body clock' };
+  // Why this suspect, in her own answers.
+  function suspectNote(k) {
+    switch (k) {
+      case 'alcohol': return 'A drink ' + say('wine') + (answered('lastDrink') ? ', the last one ' + say('lastDrink') : '') + '. Alcohol wears off in the second half of the night.';
+      case 'heat': return 'Sweats wake you ' + (say('sweats') || 'sometimes') + ', and your room feels ' + (say('room') || 'warm') + '.';
+      case 'caffeine': return (say('cups') || 'Caffeine') + ' a day' + (answered('caffeine') ? ', the last one ' + say('caffeine') : '') + '. It can stay in your system for hours.';
+      case 'mind': return 'Your mind races ' + (say('stress') || 'sometimes') + ' when you wake' + (has('awakeDo', 2) ? ', replaying tomorrow’s list' : '') + '.';
+      case 'screens': return (say('screens') || 'Screens') + ' in the last hour before bed' + (has('awakeDo', 1) ? ', and the phone again at night' : '') + '.';
+      default: return 'Broken nights push your body clock around. A fixed wake time resets it.';
+    }
+  }
+  function goalLine() {
+    var now = idx('wakeups') + 1;
+    return now >= 2 ? { now: now, target: 1, text: 'from ' + now + ' wake-ups a night to 1' } : { now: 1, target: 0, text: 'back to sleep in under 15 minutes' };
+  }
 
   // ---------- helpers ----------
   var app = document.getElementById('app');
@@ -100,42 +166,220 @@
     var h = app.querySelector('h1, .q-title, .hello, .insight-head');
     if (h) { h.setAttribute('tabindex', '-1'); h.focus({ preventScroll: true }); }
   }
+  function topbar(n) {
+    var pct = Math.round((n / FLOW.length) * 100);
+    return '<div class="topbar"><button class="icon-btn" data-back aria-label="Back">' + ICON.back + '</button>' +
+      '<div class="progress" role="progressbar" aria-valuenow="' + pct + '" aria-valuemin="0" aria-valuemax="100"><i style="width:' + pct + '%"></i></div>' +
+      '<span class="step-count sec">' + esc(FLOW[n].sec) + '</span></div>';
+  }
+
+  // ---------- charts for the info screens ----------
+  var STAGES = ['Before perimenopause', 'In perimenopause', 'After menopause'];
+  function hbars(label, values, mine) {
+    var rows = values.map(function (v, i) {
+      return '<div class="hb' + (i === 1 ? ' hb-hi' : '') + '"><span class="hb-l">' + STAGES[i] + (i === mine ? ' <em>closest to you</em>' : '') + '</span>' +
+        '<span class="hb-row"><span class="hb-t"><i style="width:' + v + '%"></i></span><b>' + v.toFixed(1) + '%</b></span></div>';
+    }).join('');
+    return '<p class="chart-t">' + label + '</p><div class="hbars" role="img" aria-label="' + esc(label + ': ' + values.map(function (v, i) { return STAGES[i] + ' ' + v + '%'; }).join(', ')) + '">' + rows + '</div>';
+  }
+  function dots(on, total, label) {
+    var d = ''; for (var i = 0; i < total; i++) d += '<i class="' + (i < on ? 'on' : '') + '"></i>';
+    return '<div class="dots10" role="img" aria-label="' + esc(label) + '">' + d + '</div><p class="chart-t" style="text-align:center;margin:10px 0 0">' + esc(label) + '</p>';
+  }
+  function caffeineLine() {
+    // 12 PM to 12 AM, 22px per hour starting at x=14
+    function x(h) { return 14 + h * 22; }
+    var ticks = [[0, '12 PM'], [3, '3 PM'], [6, '6 PM'], [9, '9 PM'], [12, '12 AM']].map(function (t) {
+      return '<line x1="' + x(t[0]) + '" y1="54" x2="' + x(t[0]) + '" y2="60" class="ax"/><text x="' + x(t[0]) + '" y="76">' + t[1] + '</text>';
+    }).join('');
+    return '<p class="chart-t">Caffeine taken 6 hours before an 11 PM bedtime</p>' +
+      '<svg class="tl" viewBox="0 0 292 84" role="img" aria-label="Timeline: coffee at 5 PM, bedtime at 11 PM, 6 hours apart">' +
+      '<line x1="' + x(0) + '" y1="54" x2="' + x(12) + '" y2="54" class="ax"/>' + ticks +
+      '<rect x="' + x(5) + '" y="34" width="' + (x(11) - x(5)) + '" height="14" rx="7" class="win"/>' +
+      '<text x="' + ((x(5) + x(11)) / 2) + '" y="26" class="lbl">6 hours: sleep was still over an hour shorter</text>' +
+      '<circle cx="' + x(5) + '" cy="41" r="7" class="cup"/><circle cx="' + x(11) + '" cy="41" r="7" class="bed"/></svg>' +
+      '<p class="sc-legend"><span class="k on"></span>Coffee, 5 PM <span class="k bedk"></span>Bed, 11 PM</p>';
+  }
+  function nightLine() {
+    // Illustration: wake level across the night, calmer first half, choppier second half.
+    var pts = [[0, 20], [10, 52], [30, 62], [55, 64], [80, 60], [105, 63], [130, 58], [145, 40], [152, 58], [170, 30], [178, 56], [196, 36], [204, 58], [222, 22], [232, 50], [252, 30], [262, 52], [280, 18]];
+    var d = 'M' + pts.map(function (p) { return (10 + p[0]) + ' ' + p[1]; }).join(' L');
+    return '<p class="chart-t">How evening alcohol tends to shape the night</p>' +
+      '<svg class="tl" viewBox="0 0 300 96" role="img" aria-label="Illustration: steadier sleep in the first half of the night, more waking in the second half">' +
+      '<rect x="150" y="8" width="140" height="62" rx="8" class="half2"/>' +
+      '<text x="80" y="14" class="lbl">Steadier</text><text x="220" y="20" class="lbl">More waking</text>' +
+      '<path d="' + d + '" class="wake"/>' +
+      '<line x1="10" y1="70" x2="290" y2="70" class="ax"/>' +
+      '<text x="10" y="88" style="text-anchor:start">11 PM</text><text x="150" y="88">3 AM</text><text x="290" y="88" style="text-anchor:end">7 AM</text></svg>' +
+      '<p class="sc-legend">Illustration of the pattern, not your data. Higher line means closer to awake.</p>';
+  }
+  function guessCard() {
+    return '<div class="vs"><div><b>Change 6 things at once</b><span>Melatonin, no coffee, new pillow, app… Better week? You can’t tell which one did it.</span></div>' +
+      '<div class="vs-us"><b>One change, 7 nights</b><span>Compare experiment nights with the rest. Keep what works, drop what doesn’t.</span></div></div>';
+  }
+  function goalChart() {
+    var g = goalLine(), y = function (v) { return 14 + (4 - v) * 18; };
+    var start = g.now, end = g.target, xs = [20, 85, 150, 215, 280];
+    var vals = xs.map(function (_, i) { return start - (start - end) * Math.pow(i / 4, 0.8); });
+    var d = 'M' + xs.map(function (x, i) { return x + ' ' + y(vals[i]).toFixed(1); }).join(' L');
+    var lbls = ['Today', 'Week 1', 'Week 2', 'Week 3', 'Week 4'].map(function (l, i) { return '<text x="' + xs[i] + '" y="104">' + l + '</text>'; }).join('');
+    return '<p class="chart-t">Wake-ups per night</p><svg class="tl" viewBox="0 0 300 110" role="img" aria-label="Goal: from ' + start + ' to ' + end + ' wake-ups per night over 4 weeks">' +
+      '<line x1="10" y1="86" x2="290" y2="86" class="ax"/>' +
+      '<path d="' + d + '" class="goal"/>' +
+      '<circle cx="20" cy="' + y(start) + '" r="6" class="bed"/><text x="30" y="' + (y(start) - 8) + '" style="text-anchor:start" class="lbl">' + start + ' now</text>' +
+      '<circle cx="280" cy="' + y(end) + '" r="7" class="cup"/><text x="272" y="' + (y(end) - 12) + '" style="text-anchor:end" class="lbl">Goal: ' + end + '</text>' + lbls + '</svg>' +
+      '<p class="sc-legend">Your goal, not a guarantee. You’ll see real numbers from your own check-ins.</p>';
+  }
+
+  var INFO = {
+    short: function () {
+      var c = state.answers.cycle;
+      return {
+        eyebrow: 'You’re not alone',
+        title: c === 1 ? 'Less regular periods after 40 are a common sign of perimenopause. <strong>So is losing sleep.</strong>' : 'You’re not imagining it. <strong>Sleep changes in midlife.</strong>',
+        visual: hbars('US women aged 40–59 who sleep less than 7 hours', [32.5, 56.0, 40.5], c),
+        body: 'More than half of women in perimenopause sleep under 7 hours a night. It’s not a willpower problem.',
+        src: 'CDC, NCHS Data Brief No. 286, 2017'
+      };
+    },
+    staying: function () {
+      return {
+        eyebrow: 'Your nights',
+        title: 'You wake up ' + esc(say('wakeups') || 'at night') + '. <strong>Nearly 1 in 3</strong> women in perimenopause has trouble staying asleep most nights.',
+        visual: '<ul class="recap"><li>Usually ' + esc(say('waketime') || 'at night') + '</li><li>Awake ' + esc(say('awakeLong') || 'a while') + '</li><li>' + esc(say('badNights') || 'Several') + ' bad nights a week</li></ul>' +
+          hbars('Trouble staying asleep on 4+ nights a week', [23.7, 30.8, 35.9], state.answers.cycle),
+        body: 'In the same survey, about half of women in perimenopause (49.9%) woke up not feeling rested on most days.',
+        src: 'CDC, NCHS Data Brief No. 286, 2017'
+      };
+    },
+    heat: function () {
+      var s = idx('sweats');
+      return {
+        eyebrow: 'Your body',
+        title: '<strong>Up to 80%</strong> of women get hot flashes or night sweats during the transition.',
+        visual: dots(8, 10, 'Up to 8 in 10 women'),
+        body: (s >= 2 ? 'You said they wake you ' + esc(say('sweats')) + '. ' : '') + 'For more than half of women with frequent hot flashes, they lasted over 7 years. Waiting it out is a long wait, but heat at night is something you can change tonight.',
+        src: 'SWAN study, JAMA Internal Medicine, 2015'
+      };
+    },
+    caffeine: function () {
+      var late = answered('caffeine') && (idx('caffeine') === 1 || idx('caffeine') === 2);
+      return {
+        eyebrow: 'Your days',
+        title: late ? 'Your last cup is ' + esc(say('caffeine')) + '. <strong>That may still be in your system at bedtime.</strong>' : 'Afternoon coffee can cost you <strong>more than an hour of sleep.</strong>',
+        visual: caffeineLine(),
+        body: 'In a sleep-lab study, about 2–3 cups of coffee (400 mg) taken 6 hours before bed cut sleep by more than an hour. People didn’t notice it themselves.',
+        src: 'Drake et al., Journal of Clinical Sleep Medicine, 2013'
+      };
+    },
+    work: function () {
+      var hit = answered('work') && idx('work') >= 1 && idx('work') <= 3;
+      return {
+        eyebrow: 'Your days',
+        title: hit ? 'You feel it at work. <strong>So do many women your age.</strong>' : 'It doesn’t stay in the bedroom.',
+        visual: '<div class="bigstat"><b>1 in 9</b><span>employed women aged 45–60 missed work because of menopause symptoms in the past year</span></div>' +
+          '<div class="bigstat small"><b>$1.8B</b><span>estimated lost work time in the US each year</span></div>',
+        body: 'Brain fog at 3 PM and a short fuse at dinner often start at 3 AM. Fixing the night is the shortest way to fixing the day.',
+        src: 'Faubion et al., Mayo Clinic Proceedings, 2023 (4,440 women)'
+      };
+    },
+    alcohol: function () {
+      var mid = answered('waketime') && idx('waketime') >= 2 && idx('waketime') <= 4;
+      return {
+        eyebrow: 'Your evenings',
+        title: 'Wine helps you fall asleep. <strong>Then it can wake you up.</strong>',
+        visual: nightLine(),
+        body: 'In a sleep-lab study, an evening of drinking increased wakefulness in the second half of the night, and women woke more often than men.' +
+          (mid ? ' You usually wake ' + esc(say('waketime')) + ', right in that second half.' : ''),
+        src: 'Arnedt et al., Alcoholism: Clinical & Experimental Research, 2011'
+      };
+    },
+    guess: function () {
+      var n = picks('tried').filter(function (i) { return i !== 6; }).length;
+      return {
+        eyebrow: 'Why it’s been hard',
+        title: n ? 'You’ve tried ' + n + ' thing' + (n === 1 ? '' : 's') + '. <strong>The hard part is knowing what worked.</strong>' : 'Most sleep advice is a list of 20 things <strong>to do all at once.</strong>',
+        visual: guessCard(),
+        body: 'SleepThrough tests one change at a time for 7 nights and compares your experiment nights with the rest. Your own nights are the evidence.',
+        src: ''
+      };
+    },
+    preview: function () {
+      var g = goalLine();
+      return {
+        eyebrow: 'Your plan',
+        title: 'Your goal: <strong>' + esc(g.text) + '</strong> in 4 weeks.',
+        visual: goalChart(),
+        body: 'We’ll pick 4 experiments from your answers, one per week, in about ' + esc(say('minutes') || '10 minutes') + ' a day.',
+        src: ''
+      };
+    }
+  };
 
   // ---------- views ----------
   function viewQuiz(n) {
-    var q = QUIZ[n];
+    var q = FLOW[n];
     if (!q) return go('#/email');
-    var pct = Math.round((n / QUIZ.length) * 100);
+    if (!visible(q)) return goNext(n);
+    if (q.info) return viewInfo(n);
+    var multi = !!q.multi;
+    var cur = state.answers[q.id];
     var opts = q.opts.map(function (o, i) {
-      return '<button class="opt" data-i="' + i + '" aria-pressed="' + (state.answers[q.id] === i) + '">' + esc(o) + '</button>';
+      var on = multi ? (Array.isArray(cur) && cur.indexOf(i) !== -1) : cur === i;
+      return '<button class="opt' + (multi ? ' opt-multi' : '') + '" data-i="' + i + '" aria-pressed="' + on + '">' + esc(o) + '</button>';
     }).join('');
-    screen('night',
-      '<div class="topbar"><button class="icon-btn" data-back aria-label="Back">' + ICON.back + '</button>' +
-      '<div class="progress" role="progressbar" aria-valuenow="' + pct + '" aria-valuemin="0" aria-valuemax="100"><i style="width:' + pct + '%"></i></div>' +
-      '<span class="step-count">' + (n + 1) + '/' + QUIZ.length + '</span></div>' +
+    screen('night', topbar(n) +
       '<h1 class="q-title">' + esc(q.q) + '</h1>' +
       (q.help ? '<p class="q-help">' + esc(q.help) + '</p>' : '') +
-      '<div class="options">' + opts + '</div>');
-    app.querySelector('[data-back]').onclick = function () { n === 0 ? go('#/') : go('#/quiz/' + (n - 1)); };
+      '<div class="options">' + opts + '</div>' +
+      (multi ? '<div class="spacer"></div><button class="btn btn-lamp btn-block sticky" data-next' + (Array.isArray(cur) && cur.length ? '' : ' disabled') + '>Continue</button>' : ''));
+    app.querySelector('[data-back]').onclick = function () { goPrev(n); };
     app.querySelectorAll('.opt').forEach(function (b) {
       b.onclick = function () {
-        state.answers[q.id] = +b.dataset.i; save();
-        b.setAttribute('aria-pressed', 'true');
-        setTimeout(function () { go('#/quiz/' + (n + 1)); }, 160);
+        var i = +b.dataset.i;
+        if (!multi) {
+          state.answers[q.id] = i; save();
+          app.querySelectorAll('.opt').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+          setTimeout(function () { goNext(n); }, 160);
+          return;
+        }
+        var a = Array.isArray(state.answers[q.id]) ? state.answers[q.id].slice() : [];
+        var at = a.indexOf(i);
+        if (at !== -1) a.splice(at, 1);
+        else if (i === q.none) a = [i];
+        else { a = a.filter(function (x) { return x !== q.none; }); a.push(i); }
+        state.answers[q.id] = a; save();
+        app.querySelectorAll('.opt').forEach(function (x) { x.setAttribute('aria-pressed', String(a.indexOf(+x.dataset.i) !== -1)); });
+        app.querySelector('[data-next]').disabled = !a.length;
       };
     });
+    var nx = app.querySelector('[data-next]');
+    if (nx) nx.onclick = function () { goNext(n); };
+  }
+
+  function viewInfo(n) {
+    var c = INFO[FLOW[n].info]();
+    screen('night', topbar(n) +
+      '<p class="eyebrow">' + esc(c.eyebrow) + '</p>' +
+      '<h1 class="q-title info-title">' + c.title + '</h1>' +
+      '<div class="info-card">' + c.visual + '</div>' +
+      '<p class="info-body">' + c.body + '</p>' +
+      (c.src ? '<p class="src">Source: ' + esc(c.src) + '</p>' : '') +
+      '<div class="spacer"></div><button class="btn btn-lamp btn-block" data-next>Continue</button>');
+    app.querySelector('[data-back]').onclick = function () { goPrev(n); };
+    app.querySelector('[data-next]').onclick = function () { goNext(n); };
   }
 
   function viewEmail() {
     screen('night',
       '<div class="topbar"><button class="icon-btn" data-back aria-label="Back">' + ICON.back + '</button><div class="progress"><i style="width:100%"></i></div><span class="step-count"></span></div>' +
-      '<h1 class="q-title">Where should we send your sleep plan?</h1>' +
+      '<h1 class="q-title">Your plan is ready. Where should we send it?</h1>' +
       '<p class="q-help">We’ll email your results and your week 1 experiment. No spam, unsubscribe any time.</p>' +
       '<form id="ef"><label for="em" class="q-help" style="display:block;margin:8px 0 6px">Email</label>' +
       '<input id="em" class="field" type="email" autocomplete="email" placeholder="you@example.com" value="' + esc(state.email) + '">' +
       '<div class="spacer"></div><button class="btn btn-lamp btn-block" type="submit" style="margin-top:20px">See my results</button></form>' +
       '<button class="btn btn-quiet btn-block" data-skip>Skip and see results</button>');
-    app.querySelector('[data-back]').onclick = function () { go('#/quiz/' + (QUIZ.length - 1)); };
+    app.querySelector('[data-back]').onclick = function () { goPrev(FLOW.length); };
     app.querySelector('#ef').onsubmit = function (e) { e.preventDefault(); state.email = app.querySelector('#em').value.trim(); save(); go('#/analyzing'); };
     app.querySelector('[data-skip]').onclick = function () { go('#/analyzing'); };
   }
@@ -143,14 +387,26 @@
   function viewAnalyzing() {
     var steps = ['Reading your nights', 'Weighing wine, caffeine, heat and stress', 'Matching patterns common in perimenopause', 'Building your 4-week plan'];
     screen('night',
-      '<div class="spacer"></div><h1 class="q-title">Finding what’s waking you</h1>' +
-      '<ul class="analyze">' + steps.map(function (s) { return '<li><span class="dot"></span>' + s + '</li>'; }).join('') + '</ul><div class="spacer"></div>');
-    var lis = app.querySelectorAll('.analyze li'), i = 0;
+      '<div class="spacer" style="flex:.4"></div><h1 class="q-title">Finding what’s waking you</h1>' +
+      '<ul class="analyze">' + steps.map(function (s) { return '<li><span class="dot"></span>' + s + '</li>'; }).join('') + '</ul>' +
+      '<div class="micro" id="micro" aria-live="polite"></div><div class="spacer"></div>');
+    var lis = app.querySelectorAll('.analyze li'), box = app.querySelector('#micro'), i = 0;
     var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var wait = reduce ? 150 : 800;
+    function ask(m, then) {
+      box.innerHTML = '<p>' + esc(m.q) + '</p><div class="micro-btns"><button class="opt" data-v="1">Yes</button><button class="opt" data-v="0">No</button></div>';
+      box.classList.add('show');
+      box.querySelectorAll('button').forEach(function (b) {
+        b.onclick = function () { state.answers[m.id] = +b.dataset.v; save(); box.classList.remove('show'); box.innerHTML = ''; setTimeout(then, reduce ? 50 : 350); };
+      });
+    }
     (function tick() {
       if (location.hash !== '#/analyzing') return;
-      if (i < lis.length) { lis[i].classList.add('done'); i++; setTimeout(tick, reduce ? 150 : 700); }
-      else { state.plan = analyze(); state.expIndex = 0; save(); go('#/result'); }
+      if (i < lis.length) {
+        lis[i].classList.add('done'); i++;
+        if (i - 1 < MICRO.length) setTimeout(function () { ask(MICRO[i - 1], tick); }, reduce ? 50 : 400);
+        else setTimeout(tick, wait);
+      } else { state.plan = analyze(); state.expIndex = 0; save(); go('#/result'); }
     })();
   }
 
@@ -161,31 +417,44 @@
       '<text x="64" y="76">' + score + '</text></svg>';
   }
 
+  function recapList() {
+    var items = [];
+    if (answered('wakeups')) items.push('You wake up ' + say('wakeups') + ' a night' + (answered('waketime') ? ', usually ' + say('waketime') : ''));
+    if (answered('awakeLong')) items.push('Awake ' + say('awakeLong') + ' each time');
+    if (answered('badNights')) items.push(say('badNights') + ' bad nights a week');
+    var sym = picks('symptoms').filter(function (i) { return i !== 6; }).map(function (i) { return step('symptoms').opts[i].toLowerCase(); });
+    if (sym.length) items.push('Also: ' + sym.slice(0, 3).join(', '));
+    return items.length ? '<ul class="recap recap-list">' + items.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul>' : '';
+  }
+
   function viewResult() {
     var p = state.plan || (state.plan = analyze());
     var verdict = p.score >= 75 ? 'Your sleep is mostly working.' : p.score >= 55 ? 'Your sleep is getting interrupted.' : 'Your nights are working against you.';
     screen('night',
       '<div class="topbar"><button class="icon-btn" data-back aria-label="Back">' + ICON.back + '</button><span></span></div>' +
-      '<p class="q-help" style="margin:0">Your Sleep Score</p>' +
+      '<p class="eyebrow" style="margin-top:0">What you told us</p>' + recapList() +
+      '<p class="q-help" style="margin:18px 0 0">Your Sleep Score</p>' +
       '<div class="score">' + ring(p.score) + '<div class="score-copy"><strong>' + verdict + '</strong><p>Out of 100, higher is better. We re-score your nights after every experiment.</p></div></div>' +
       '<h2 style="font-size:24px">Your likely suspects</h2>' +
-      '<ol class="suspects">' + p.suspects.map(function (s, i) { return '<li><span class="rank">' + (i + 1) + '</span><b>' + SUSPECT_NAME[s] + '</b><span>' + SUSPECT_NOTE[s] + '</span></li>'; }).join('') + '</ol>' +
+      '<ol class="suspects">' + p.suspects.map(function (s, i) { return '<li><span class="rank">' + (i + 1) + '</span><b>' + SUSPECT_NAME[s] + '</b><span>' + esc(suspectNote(s)) + '</span></li>'; }).join('') + '</ol>' +
       '<h2 style="font-size:24px">Your 4-week plan</h2>' +
       '<ol class="plan-weeks">' + p.weeks.map(function (k, i) { return '<li>' + esc(EXP[k].name) + '<small>Week ' + (i + 1) + '</small></li>'; }).join('') + '</ol>' +
       '<button class="btn btn-lamp btn-block" data-next>Start my plan</button>' +
       '<p class="disclaimer" style="margin-top:16px">SleepThrough is a coaching tool, not a diagnosis. If you snore loudly or stop breathing at night, talk to a doctor.</p>');
     requestAnimationFrame(function () { var v = app.querySelector('.ring .val'); if (v) v.style.strokeDashoffset = v.dataset.off; });
-    app.querySelector('[data-back]').onclick = function () { go('#/quiz/' + (QUIZ.length - 1)); };
+    app.querySelector('[data-back]').onclick = function () { goPrev(FLOW.length); };
     app.querySelector('[data-next]').onclick = function () { go('#/paywall'); };
   }
 
   function viewPaywall() {
     var p = state.plan || analyze();
+    var g = goalLine();
     var pick = 'q';
     screen('night',
       '<div class="topbar"><button class="icon-btn" data-back aria-label="Back">' + ICON.back + '</button><span></span></div>' +
-      '<h1 class="q-title" style="margin-top:0">Find what’s waking you in 7 nights</h1>' +
-      '<ul class="pw-list"><li>Week 1: ' + esc(EXP[p.weeks[0]].name) + '</li><li>3-minute wind-down every evening</li><li>“Awake at 3 AM” mode for the middle of the night</li><li>Your result on day 7, then the next experiment</li></ul>' +
+      '<h1 class="q-title" style="margin-top:0">Your plan to get <span class="hl">' + esc(g.text) + '</span></h1>' +
+      '<div class="info-card">' + goalChart() + '</div>' +
+      '<ul class="pw-list"><li>Week 1: ' + esc(EXP[p.weeks[0]].name) + ' — your #1 suspect</li><li>3-minute wind-down every evening</li><li>“Awake at 3 AM” mode for ' + esc(say('waketime') || 'the middle of the night') + '</li><li>Your result on day 7, then the next experiment</li></ul>' +
       '<div class="pw-plans" role="group" aria-label="Choose a plan">' +
       '<button class="pw-plan" data-p="q" aria-pressed="true"><b>12 weeks</b><span class="pw-price">$39.99</span><small>$3.33 a week · best value</small></button>' +
       '<button class="pw-plan" data-p="m" aria-pressed="false"><b>4 weeks</b><span class="pw-price">$19.99</span><small>$5.00 a week</small></button></div>' +
@@ -201,7 +470,8 @@
   }
 
   // ---------- product ----------
-  function currentExp() { var p = state.plan || (state.plan = analyze()); return EXP[p.weeks[state.expIndex] || p.weeks[0]]; }
+  function currentKey() { var p = state.plan || (state.plan = analyze()); return p.weeks[state.expIndex] || p.weeks[0]; }
+  function currentExp() { return EXP[currentKey()]; }
   function weekCheckins() { var start = state.expIndex * 7; return state.checkins.slice(start, start + 7); }
 
   function streak() {
@@ -214,20 +484,21 @@
     var h = new Date().getHours();
     var night = h >= 19 || h < 6;
     var hello = h < 5 ? 'Up in the night?' : h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
-    var dots = ''; for (var i = 0; i < 7; i++) { var c = wk[i]; dots += '<i class="' + (c ? (c.did ? 'on' : 'miss') : '') + '"></i>'; }
+    var dots7 = ''; for (var i = 0; i < 7; i++) { var c = wk[i]; dots7 += '<i class="' + (c ? (c.did ? 'on' : 'miss') : '') + '"></i>'; }
     var free = state.sub && state.sub.plan === 'free';
     var done = wk.length >= 7;
+    var g = goalLine();
     screen(night ? 'night' : 'day',
       '<div class="topbar"><a class="brand" href="#/" style="font-size:18px;color:inherit">' + '<svg viewBox="0 0 24 24" aria-hidden="true" style="width:18px;height:18px"><path d="M15 3a8 8 0 1 0 6 13A9 9 0 0 1 15 3z"/></svg>SleepThrough</a><span></span></div>' +
       (free ? '<p class="banner">Free preview: week 1 is open. Start the trial to unlock weeks 2–4.</p>' : '') +
       '<h1 class="hello">' + hello + '</h1>' +
-      '<p class="streak">' + (streak() ? streak() + ' check-ins in a row' : 'Your first check-in is tomorrow morning') + '</p>' +
+      '<p class="streak">Goal: ' + esc(g.text) + ' · ' + (streak() ? streak() + ' check-ins in a row' : 'first check-in tomorrow morning') + '</p>' +
       '<section class="exp-card" aria-label="Current experiment"><p class="lbl">Week ' + (state.expIndex + 1) + ' · ' + (done ? 'complete' : 'Night ' + day + ' of 7') + '</p>' +
-      '<h2>' + esc(e.name) + '</h2><p>' + esc(e.how) + '</p><div class="days" aria-label="' + wk.length + ' of 7 nights checked in">' + dots + '</div></section>' +
+      '<h2>' + esc(e.name) + '</h2><p>' + esc(e.how) + '</p><p class="why">Why you: ' + esc(suspectNote(currentKey())) + '</p><div class="days" aria-label="' + wk.length + ' of 7 nights checked in">' + dots7 + '</div></section>' +
       '<div class="actions">' +
-      (done ? action('#/app/insight', ICON.chart, 'See your week 1 result', 'Ready now') : '') +
+      (done ? action('#/app/insight', ICON.chart, 'See your week ' + (state.expIndex + 1) + ' result', 'Ready now') : '') +
       action('#/app/tonight', ICON.moon, 'Tonight: 3-minute wind-down', 'Long-exhale breathing before bed') +
-      action('#/app/3am', ICON.wave, 'Awake right now?', 'What to do at 3 AM') +
+      action('#/app/3am', ICON.wave, 'Awake right now?', answered('waketime') && idx('waketime') < 5 ? 'You usually wake ' + say('waketime') + '. Open this then.' : 'What to do at 3 AM') +
       action('#/app/checkin', ICON.sun, 'Morning check-in', '30 seconds, 5 taps') +
       (!done ? action('#/app/insight', ICON.chart, 'Your week so far', wk.length + ' of 7 nights logged') : '') +
       action('#/app/devices', ICON.watch, 'Connect a sleep tracker', 'Apple Watch, Oura, Fitbit, Whoop') +
@@ -237,7 +508,7 @@
     app.querySelector('[data-reset]').onclick = function () { try { localStorage.removeItem(KEY); } catch (e) {} state = { answers: {}, email: '', plan: null, sub: null, checkins: [], expIndex: 0 }; go('#/'); };
   }
   function action(href, icon, title, sub) {
-    return '<a class="action" href="' + href + '"><span class="ic">' + icon + '</span><span><b>' + title + '</b><small>' + sub + '</small></span><span class="chev" aria-hidden="true">›</span></a>';
+    return '<a class="action" href="' + href + '"><span class="ic">' + icon + '</span><span><b>' + esc(title) + '</b><small>' + esc(sub) + '</small></span><span class="chev" aria-hidden="true">›</span></a>';
   }
 
   function fillDemo() {
@@ -266,9 +537,9 @@
       '<p class="disclaimer" style="text-align:center">Breathe in through your nose for 4, out slowly for 6. A longer exhale tells your body it’s safe to rest.</p>');
     var orb = app.querySelector('#orb'), cue = app.querySelector('#cue'), tm = app.querySelector('#tm'), btn = app.querySelector('#go');
     var running = false, left = 180, phaseT, clockT;
-    function say(t) { cue.textContent = t; if (app.querySelector('#voice').checked && 'speechSynthesis' in window) { try { speechSynthesis.cancel(); var u = new SpeechSynthesisUtterance(t); u.rate = .8; speechSynthesis.speak(u); } catch (e) {} } }
-    function inhale() { if (!running) return; say('Breathe in'); orb.style.transitionDuration = '4s'; orb.style.transform = 'scale(1.9)'; phaseT = setTimeout(exhale, 4000); }
-    function exhale() { if (!running) return; say('And out, slowly'); orb.style.transitionDuration = '6s'; orb.style.transform = 'scale(1)'; phaseT = setTimeout(inhale, 6000); }
+    function sayCue(t) { cue.textContent = t; if (app.querySelector('#voice').checked && 'speechSynthesis' in window) { try { speechSynthesis.cancel(); var u = new SpeechSynthesisUtterance(t); u.rate = .8; speechSynthesis.speak(u); } catch (e) {} } }
+    function inhale() { if (!running) return; sayCue('Breathe in'); orb.style.transitionDuration = '4s'; orb.style.transform = 'scale(1.9)'; phaseT = setTimeout(exhale, 4000); }
+    function exhale() { if (!running) return; sayCue('And out, slowly'); orb.style.transitionDuration = '6s'; orb.style.transform = 'scale(1)'; phaseT = setTimeout(inhale, 6000); }
     function stop(done) {
       running = false; clearTimeout(phaseT); clearInterval(clockT); orb.style.transform = 'scale(1)'; btn.textContent = 'Start'; left = 180; tm.textContent = '3:00';
       if (done) { cue.textContent = 'Done. Lights off when you’re ready.'; toast('Wind-down complete'); }
@@ -283,14 +554,16 @@
   }
 
   function view3am() {
+    var hot = idx('sweats') >= 2 || has('awakeDo', 3);
+    var racing = idx('stress') >= 2 || has('awakeDo', 2);
     screen('night',
       '<div class="topbar"><button class="icon-btn" data-back aria-label="Close">' + ICON.close + '</button><span></span></div>' +
       '<h1 class="q-title" style="margin-top:0">You’re awake. That’s okay.</h1>' +
-      '<p class="q-help">Keep the screen dim. Don’t check the time again.</p>' +
+      '<p class="q-help">Keep the screen dim. Don’t check the time again' + (has('awakeDo', 0) ? ' — you told us you usually do' : '') + '.</p>' +
       '<ol class="three">' +
-      '<li><div><b>Cool down first</b><span>Uncover a foot, flip the pillow, sip cold water.</span></div></li>' +
+      '<li><div><b>Cool down first</b><span>Uncover a foot, flip the pillow, sip cold water.' + (hot ? ' Heat is one of your suspects, so start here.' : '') + '</span></div></li>' +
       '<li><div><b>Breathe out longer than in</b><span>In for 4, out for 6. Two minutes is enough.</span></div></li>' +
-      '<li><div><b>Park the thought</b><span>If your mind is racing, say it once in a sentence. It will still be there in the morning.</span></div></li>' +
+      '<li><div><b>Park the thought</b><span>If your mind is racing, say it once in a sentence. It will still be there in the morning.' + (racing ? ' Tomorrow, write it on your worry list at 9:30 PM.' : '') + '</span></div></li>' +
       '<li><div><b>Still awake after about 20 minutes?</b><span>Get up, keep lights low, do something boring. Go back when you feel sleepy.</span></div></li>' +
       '</ol><div class="spacer"></div>' +
       '<a class="btn btn-lamp btn-block" href="#/app/tonight">Start 2-minute breathing</a>', 'dim-screen');
@@ -347,7 +620,6 @@
         : diff <= -0.5 ? 'This change didn’t help: ' + fmt(-diff) + ' more wake-ups. Good to know, cross it off.'
           : 'No clear difference yet. Wake-ups were about the same either way.';
     }
-    // chart
     var maxW = 4, bw = 26, gap = 13, H = 94;
     var bars = '', ticks = '';
     for (var i = 0; i < 7; i++) {
