@@ -10,10 +10,11 @@ Capstone project, Zimran IT School, 2026.
 | --- | --- | --- |
 | 1 | Landing (`#/`) | Hook "Awake at 3:07 again?", the problem, how it works, pricing, FAQ |
 | 2 | Quiz (`#/quiz/0…30`) | 23 questions in 7 blocks (about you, nights, body, days, evenings, mind, plan) with 8 "you're not alone" screens: sourced charts (CDC NCHS, SWAN, Mayo Clinic, sleep-lab studies) personalised with her answers. Caffeine and alcohol steps are skipped when not relevant |
+| 2a | Symptom scale + hormones | Six symptoms rated on a 5-level scale (like a clinical menopause rating scale) give a starting symptom score; an illustrated estrogen/progesterone screen explains why it’s happening. Sensitive questions carry “Why we ask” and “Prefer not to say” |
 | 2b | Analyzing (`#/analyzing`) | Loader with 3 yes/no micro-questions that feed the ranking |
 | 3 | Email (`#/email`) | Optional email capture, skippable |
-| 4 | Result (`#/result`) | Sleep Score (0–100), top 3 likely triggers, a 4-week plan with one experiment per week |
-| 5 | Paywall (`#/paywall`) | 12 weeks $39.99 or 4 weeks $19.99, 7-day trial. Honest soft paywall: a visible free week 1 preview |
+| 4 | Result (`#/result`) | The stage her answers fit (not a diagnosis), symptom score, Sleep Score (0–100), top 3 likely triggers, a 4-week plan with one experiment per week |
+| 5 | Paywall (`#/paywall`) | Goal with a date, answers to what she already tried, 30-day money-back promise, price shown twice.  12 weeks $39.99 or 4 weeks $19.99, 7-day trial. Honest soft paywall: a visible free week 1 preview |
 | 6 | Today (`#/app`) | Changes with the time of day. Evening: tonight's plan timed to her bedtime (last drink, cool room, wind-down) with a countdown to the next step. Morning: last night on the dial, a prefilled check-in, parked thoughts |
 | 7 | Night mode (`#/app/night`) | Dim screen with the night dial. One tap logs a wake-up; "I'm hot" starts a 90-second cool-down, "My mind is racing" parks the thought for the morning, "Back to sleep" closes the wake-up |
 | 8 | Wind-down (`#/app/tonight`) | 3-minute long-exhale breathing (in 4, out 6), optional spoken cues |

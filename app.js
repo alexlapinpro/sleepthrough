@@ -15,8 +15,8 @@
   // Questions start from her experience (nights, body, days), not from our solution.
   // "info" steps are the you're-not-alone screens: real, sourced numbers only.
   var FLOW = [
-    { sec: 'About you', id: 'age', q: 'How old are you?', opts: ['Under 40', '40–44', '45–49', '50–55', '56 or older'] },
-    { sec: 'About you', id: 'cycle', q: 'How has your period changed in the last year?', help: 'This tells us where you might be in the transition. It stays on your device.', opts: ['Still regular', 'Less regular, or skipping months', 'Stopped 12 or more months ago', 'Not sure, or not applicable'] },
+    { sec: 'About you', id: 'age', why: 'Sleep and hormones change a lot between 40 and 55. Your age helps us match you with the right stage.', q: 'How old are you?', opts: ['Under 40', '40–44', '45–49', '50–55', '56 or older'] },
+    { sec: 'About you', id: 'cycle', q: 'How has your period changed in the last year?', help: 'This tells us where you might be in the transition.', why: 'Changes in your cycle are one of the clearest signs of perimenopause. Your answers stay on your device in this preview.', opts: ['Still regular', 'Less regular, or skipping months', 'Stopped 12 or more months ago', 'Not sure, or not applicable'] },
     { sec: 'About you', info: 'short' },
 
     { sec: 'Your nights', id: 'problem', q: 'What bothers you most at night?', opts: ['Falling asleep', 'Waking up between 2 and 4 AM', 'Waking too early and staying up', 'All of these'] },
@@ -31,9 +31,10 @@
       say: ['1–2', '3–4', '5–6', '7'] },
     { sec: 'Your nights', info: 'staying' },
 
-    { sec: 'Your body', id: 'sweats', q: 'How often do hot flashes or night sweats wake you?', opts: ['Never', 'A few times a month', 'Most weeks', 'Most nights'],
+    { sec: 'Your body', id: 'sweats', why: 'Night sweats are one of the most common reasons women wake up in perimenopause, and one of the easiest to test.', q: 'How often do hot flashes or night sweats wake you?', opts: ['Never', 'A few times a month', 'Most weeks', 'Most nights'],
       say: ['never', 'a few times a month', 'most weeks', 'most nights'] },
-    { sec: 'Your body', id: 'symptoms', multi: true, none: 6, q: 'What else have you noticed in the last year or two?', help: 'Pick all that apply.', opts: ['Brain fog', 'A shorter fuse', 'Anxiety out of nowhere', 'Weight around the middle', 'Achy joints', 'Low energy all day', 'None of these'] },
+    { sec: 'Your body', id: 'sev', scale: true, q: 'How much is each of these affecting you?', why: 'Rating how strong each symptom is gives you a starting score. We re-check it every few weeks, and it goes on your report for your doctor.' },
+    { sec: 'Your body', info: 'hormones' },
     { sec: 'Your body', info: 'heat' },
 
     { sec: 'Your days', id: 'energy', q: 'How’s your energy at 3 PM?', opts: ['Fine', 'Dipping', 'Running on coffee', 'I could nap at my desk'] },
@@ -42,10 +43,10 @@
     { sec: 'Your days', id: 'caffeine', when: function () { return idx('cups') > 0; }, q: 'When do you have your last coffee, tea or soda?', opts: ['Before noon', 'Between noon and 3 PM', 'After 3 PM', 'It varies'],
       say: ['before noon', 'between noon and 3 PM', 'after 3 PM', 'at different times'] },
     { sec: 'Your days', info: 'caffeine', when: function () { return idx('cups') > 0; } },
-    { sec: 'Your days', id: 'work', q: 'How have bad nights affected your work?', opts: ['Not much', 'Harder to focus', 'More mistakes than usual', 'I’ve called in sick or cut hours', 'I don’t work outside the home'] },
+    { sec: 'Your days', id: 'work', skip: true, q: 'How have bad nights affected your work?', opts: ['Not much', 'Harder to focus', 'More mistakes than usual', 'I’ve called in sick or cut hours', 'I don’t work outside the home'] },
     { sec: 'Your days', info: 'work' },
 
-    { sec: 'Your evenings', id: 'wine', q: 'How many evenings a week do you have a drink?', opts: ['None', '1 or 2', '3 or 4', '5 or more'],
+    { sec: 'Your evenings', id: 'wine', skip: true, why: 'No judgment. Alcohol is one of the most common hidden reasons for waking in the second half of the night.', q: 'How many evenings a week do you have a drink?', opts: ['None', '1 or 2', '3 or 4', '5 or more'],
       say: ['no evenings', '1–2 evenings a week', '3–4 evenings a week', '5+ evenings a week'] },
     { sec: 'Your evenings', id: 'lastDrink', when: function () { return idx('wine') > 0; }, q: 'When do you usually finish your last drink?', opts: ['Before 7 PM', '7–9 PM', 'After 9 PM', 'Right before bed'],
       say: ['before 7 PM', 'between 7 and 9 PM', 'after 9 PM', 'right before bed'] },
@@ -55,9 +56,9 @@
     { sec: 'Your evenings', id: 'room', q: 'How does your bedroom feel at night?', opts: ['Cool', 'Comfortable', 'Warm', 'I wake up too hot'],
       say: ['cool', 'comfortable', 'warm', 'too hot'] },
 
-    { sec: 'Your mind', id: 'stress', q: 'When you wake at night, how often does your mind start racing?', opts: ['Rarely', 'Sometimes', 'Often', 'Almost always'],
+    { sec: 'Your mind', id: 'stress', skip: true, q: 'When you wake at night, how often does your mind start racing?', opts: ['Rarely', 'Sometimes', 'Often', 'Almost always'],
       say: ['rarely', 'sometimes', 'often', 'almost always'] },
-    { sec: 'Your mind', id: 'tried', multi: true, none: 6, q: 'What have you already tried for sleep?', help: 'Pick all that apply.', opts: ['Melatonin', 'Magnesium or other supplements', 'A sleep or meditation app', 'Cutting back on caffeine', 'Asking my doctor', 'Hormone therapy', 'Nothing yet'] },
+    { sec: 'Your mind', id: 'tried', skip: true, why: 'So we don’t suggest what you’ve already tried, and so your doctor sees the full picture.', multi: true, none: 6, q: 'What have you already tried for sleep?', help: 'Pick all that apply.', opts: ['Melatonin', 'Magnesium or other supplements', 'A sleep or meditation app', 'Cutting back on caffeine', 'Asking my doctor', 'Hormone therapy', 'Nothing yet'] },
     { sec: 'Your mind', info: 'guess' },
 
     { sec: 'Your plan', id: 'goal', q: 'What would change most if you slept through the night?', opts: ['More energy at work', 'A better mood with my family', 'Less coffee to get through the day', 'Feeling like myself again'] },
@@ -67,6 +68,24 @@
     { sec: 'Your plan', info: 'preview' }
   ];
 
+  var SEV_ITEMS = ['Hot flashes or night sweats', 'Waking up at night', 'Brain fog', 'Mood swings or a short fuse', 'Anxiety', 'Low energy all day'];
+  var SEV_LEVELS = ['Not at all', 'Barely noticeable', 'Noticeable but manageable', 'Gets in the way of my day', 'Severely affects my life'];
+  function sevVals() { var a = state.answers.sev; return Array.isArray(a) && a.length === SEV_ITEMS.length ? a : null; }
+  function sevAt(i) { var a = sevVals(); return a && typeof a[i] === 'number' ? a[i] : 0; }
+  function sevScore(a) { return a ? a.reduce(function (t, x) { return t + (x || 0); }, 0) : null; }
+  function sevMax() { return SEV_ITEMS.length * 4; }
+  function symList(min) { var a = sevVals(); if (!a) return []; return SEV_ITEMS.map(function (n, i) { return { n: n, v: a[i] }; }).filter(function (x, i) { return i !== 1 && x.v >= (min || 2); }).sort(function (x, y) { return y.v - x.v; }); }
+  // A plain-language read of the transition stage from cycle, age and symptoms. Never a diagnosis.
+  function stageGuess() {
+    var c = state.answers.cycle, age = idx('age'), vms = idx('sweats') >= 1 || sevAt(0) >= 2;
+    if (c === 2) return { name: 'Postmenopause', why: 'Your periods stopped 12 or more months ago, which is how menopause is defined.' };
+    if (c === 1) return { name: 'Perimenopause', why: 'Less regular periods' + (age >= 1 ? ' after 40' : '') + (vms ? ', plus hot flashes or night sweats,' : '') + ' are the most common signs of the transition.' };
+    if (c === 0 && age >= 1 && vms) return { name: 'Possibly early perimenopause', why: 'Your periods are still regular, but night sweats and broken sleep after 40 often start before cycles change.' };
+    if (c === 3 && age >= 2) return { name: 'Possibly perimenopause', why: 'At your age and with your symptoms, the transition is a likely part of the picture.' };
+    if (age === 0) return { name: 'Hard to say yet', why: 'Under 40, broken sleep has many causes. Your plan works either way.' };
+    return { name: 'Hard to say yet', why: 'Your answers could fit several stages. Your plan works either way.' };
+  }
+  function targetDate() { var d = new Date(Date.now() + 28 * 86400000); return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric' }); }
   function step(id) { for (var i = 0; i < FLOW.length; i++) if (FLOW[i].id === id) return FLOW[i]; return null; }
   function idx(id) { var a = state.answers[id]; return typeof a === 'number' ? a : 0; }
   function answered(id) { return typeof state.answers[id] === 'number'; }
@@ -99,9 +118,9 @@
   function analyze() {
     var w = {
       alcohol: idx('wine') * 3 + (idx('wine') > 0 && idx('lastDrink') >= 2 ? 2 : 0),
-      heat: idx('sweats') * 2 + (idx('room') >= 2 ? idx('room') : 0) + (has('awakeDo', 3) ? 2 : 0) + (yes('m_hot') ? 1 : 0),
+      heat: idx('sweats') * 2 + (sevAt(0) >= 3 ? 2 : 0) + (idx('room') >= 2 ? idx('room') : 0) + (has('awakeDo', 3) ? 2 : 0) + (yes('m_hot') ? 1 : 0),
       caffeine: idx('cups') === 0 ? 0 : [0, 3, 6, 2][idx('caffeine')] + (idx('cups') >= 3 ? 2 : 0) + (idx('energy') >= 2 ? 1 : 0),
-      mind: idx('stress') * 2 + (idx('screens') === 1 ? 2 : 0) + (has('awakeDo', 2) ? 2 : 0) + (yes('m_wired') ? 1 : 0),
+      mind: idx('stress') * 2 + (sevAt(4) >= 3 ? 1 : 0) + (idx('screens') === 1 ? 2 : 0) + (has('awakeDo', 2) ? 2 : 0) + (yes('m_wired') ? 1 : 0),
       screens: [5, 3, 0, 2][idx('screens')] + (has('awakeDo', 1) ? 2 : 0),
       rhythm: 2 + (idx('waketime') === 5 ? 1 : 0)
     };
@@ -188,6 +207,17 @@
     var d = ''; for (var i = 0; i < total; i++) d += '<i class="' + (i < on ? 'on' : '') + '"></i>';
     return '<div class="dots10" role="img" aria-label="' + esc(label) + '">' + d + '</div><p class="chart-t" style="text-align:center;margin:10px 0 0">' + esc(label) + '</p>';
   }
+  function hormoneChart(mine) {
+    var est = 'M10 60 C25 50 35 70 50 58 C65 48 75 66 90 58 C100 30 108 92 118 40 C128 15 136 98 148 52 C158 22 166 96 178 70 C190 50 198 92 210 88 C235 100 260 104 290 106';
+    var pro = 'M10 70 C40 62 70 72 90 66 C120 78 150 90 210 100 C240 104 265 106 290 108';
+    var zx = [[10, 90], [90, 210], [210, 290]];
+    var band = '<rect x="' + zx[mine][0] + '" y="10" width="' + (zx[mine][1] - zx[mine][0]) + '" height="104" rx="8" class="hz-me"/>';
+    return '<svg class="tl" viewBox="0 0 300 140" role="img" aria-label="Illustration: estrogen swings and progesterone falls during perimenopause, both are lower after menopause">' + band +
+      '<line x1="90" y1="10" x2="90" y2="114" class="ax" stroke-dasharray="3 4"/><line x1="210" y1="10" x2="210" y2="114" class="ax" stroke-dasharray="3 4"/>' +
+      '<path d="' + est + '" class="h-est"/><path d="' + pro + '" class="h-pro"/>' +
+      '<text x="50" y="132">Before</text><text x="150" y="132">Perimenopause</text><text x="250" y="132">After</text></svg>' +
+      '<p class="sc-legend"><span class="k on"></span>Estrogen <span class="k k-pro"></span>Progesterone · illustration, not your levels</p>';
+  }
   function caffeineLine() {
     // 12 PM to 12 AM, 22px per hour starting at x=14
     function x(h) { return 14 + h * 22; }
@@ -264,6 +294,21 @@
         src: 'SWAN study, JAMA Internal Medicine, 2015'
       };
     },
+    hormones: function () {
+      var chips = symList(2).slice(0, 3).map(function (x) { return x.n; });
+      if (idx('sweats') >= 2 && chips.indexOf(SEV_ITEMS[0]) === -1) chips.unshift(SEV_ITEMS[0]);
+      chips.unshift('Waking at night');
+      chips = chips.slice(0, 4);
+      var mine = state.answers.cycle === 2 ? 2 : state.answers.cycle === 0 && idx('age') === 0 ? 0 : 1;
+      var zone = ['Before', 'Perimenopause', 'After'];
+      return {
+        eyebrow: 'Why this is happening',
+        title: 'This isn’t a willpower problem. <strong>Your hormones are changing.</strong>',
+        visual: hormoneChart(mine) + '<p class="chart-t" style="margin:12px 0 8px">Often linked to these swings, from your answers:</p><ul class="recap">' + chips.map(function (c) { return '<li>' + esc(c) + '</li>'; }).join('') + '</ul>',
+        body: 'In perimenopause, progesterone, which helps you sleep, often drops first, and estrogen swings up and down. Those swings can bring night sweats, 3 AM wake-ups and a racing mind. Some of what wakes you is still in your hands: heat, wine, caffeine and evening habits are things you can test.',
+        src: ''
+      };
+    },
     caffeine: function () {
       var late = answered('caffeine') && (idx('caffeine') === 1 || idx('caffeine') === 2);
       return {
@@ -324,6 +369,7 @@
     if (!q) return go('#/email');
     if (!visible(q)) return goNext(n);
     if (q.info) return viewInfo(n);
+    if (q.scale) return viewScale(n);
     var multi = !!q.multi;
     var cur = state.answers[q.id];
     var opts = q.opts.map(function (o, i) {
@@ -333,7 +379,8 @@
     screen('night', topbar(n) +
       '<h1 class="q-title">' + esc(q.q) + '</h1>' +
       (q.help ? '<p class="q-help">' + esc(q.help) + '</p>' : '') +
-      '<div class="options">' + opts + '</div>' +
+      '<div class="options">' + opts + '</div>' + whyBox(q) +
+      (q.skip && !multi ? '<button class="btn btn-quiet btn-block" data-skipq>Prefer not to say</button>' : '') +
       (multi ? '<div class="spacer"></div><button class="btn btn-lamp btn-block sticky" data-next' + (Array.isArray(cur) && cur.length ? '' : ' disabled') + '>Continue</button>' : ''));
     app.querySelector('[data-back]').onclick = function () { goPrev(n); };
     app.querySelectorAll('.opt').forEach(function (b) {
@@ -357,6 +404,41 @@
     });
     var nx = app.querySelector('[data-next]');
     if (nx) nx.onclick = function () { goNext(n); };
+    var sk = app.querySelector('[data-skipq]');
+    if (sk) sk.onclick = function () { delete state.answers[q.id]; save(); goNext(n); };
+  }
+  function whyBox(q) { return q.why ? '<details class="whyq"><summary>Why we ask</summary><p>' + esc(q.why) + '</p></details>' : ''; }
+
+  // One symptom at a time, five levels, like a clinical rating scale.
+  function viewScale(n, k, rescore) {
+    var q = FLOW[n] || {}, cur = rescore ? (rescore.vals) : (Array.isArray(state.answers.sev) ? state.answers.sev.slice() : []);
+    k = k || 0;
+    var head = rescore ? '<div class="topbar"><button class="icon-btn" data-back aria-label="Back">' + ICON.back + '</button><div class="progress"><i style="width:' + Math.round(k / SEV_ITEMS.length * 100) + '%"></i></div><span class="step-count">Re-check</span></div>' : topbar(n);
+    screen(rescore ? 'day' : 'night', head +
+      '<h1 class="q-title">' + esc(rescore ? 'How much is each of these affecting you now?' : q.q) + '</h1>' +
+      '<div class="sev-card"><span class="sev-n">' + (k + 1) + '/' + SEV_ITEMS.length + '</span><b>' + esc(SEV_ITEMS[k]) + '</b></div>' +
+      '<div class="options">' + SEV_LEVELS.map(function (l, i) { return '<button class="opt" data-v="' + i + '" aria-pressed="' + (cur[k] === i) + '">' + esc(l) + '</button>'; }).join('') + '</div>' +
+      (rescore ? '' : whyBox(q)), rescore ? 'sky-day' : '');
+    app.querySelector('[data-back]').onclick = function () {
+      if (k > 0) return viewScale(n, k - 1, rescore);
+      if (rescore) return go('#/app/progress');
+      goPrev(n);
+    };
+    app.querySelectorAll('.opt').forEach(function (b) {
+      b.onclick = function () {
+        cur[k] = +b.dataset.v; b.setAttribute('aria-pressed', 'true');
+        if (!rescore) { state.answers.sev = cur; save(); } else rescore.vals = cur;
+        setTimeout(function () {
+          if (k + 1 < SEV_ITEMS.length) return viewScale(n, k + 1, rescore);
+          if (rescore) {
+            state.sevHistory = state.sevHistory || [];
+            state.sevHistory.push({ at: now(), vals: cur.slice() }); save();
+            toast('Symptom score saved: ' + sevScore(cur) + ' of ' + sevMax()); return go('#/app/progress');
+          }
+          goNext(n);
+        }, 180);
+      };
+    });
   }
 
   function viewInfo(n) {
@@ -424,17 +506,23 @@
     if (answered('wakeups')) items.push('You wake up ' + say('wakeups') + ' a night' + (answered('waketime') ? ', usually ' + say('waketime') : ''));
     if (answered('awakeLong')) items.push('Awake ' + say('awakeLong') + ' each time');
     if (answered('badNights')) items.push(say('badNights') + ' bad nights a week');
-    var sym = picks('symptoms').filter(function (i) { return i !== 6; }).map(function (i) { return step('symptoms').opts[i].toLowerCase(); });
+    var sym = symList(2).map(function (x) { return x.n.toLowerCase(); });
     if (sym.length) items.push('Also: ' + sym.slice(0, 3).join(', '));
     return items.length ? '<ul class="recap recap-list">' + items.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul>' : '';
   }
 
+  function stageCard() {
+    var st = stageGuess(), sc = sevScore(sevVals());
+    return '<section class="stage"><p class="stage-l">Your answers fit</p><h2 class="stage-n">' + esc(st.name) + '</h2><p class="stage-w">' + esc(st.why) + '</p>' +
+      (sc != null ? '<p class="stage-s">Symptom score <b>' + sc + '</b> of ' + sevMax() + '. We re-check it every few weeks.</p>' : '') +
+      '<p class="stage-d">Not a diagnosis. Your doctor can confirm it, and your SleepThrough report helps that conversation.</p></section>';
+  }
   function viewResult() {
     var p = state.plan || (state.plan = analyze());
     var verdict = p.score >= 75 ? 'Your sleep is mostly working.' : p.score >= 55 ? 'Your sleep is getting interrupted.' : 'Your nights are working against you.';
     screen('night',
       '<div class="topbar"><button class="icon-btn" data-back aria-label="Back">' + ICON.back + '</button><span></span></div>' +
-      '<p class="eyebrow" style="margin-top:0">What you told us</p>' + recapList() +
+      '<p class="eyebrow" style="margin-top:0">What you told us</p>' + recapList() + stageCard() +
       '<p class="q-help" style="margin:18px 0 0">Your Sleep Score</p>' +
       '<div class="score">' + ring(p.score) + '<div class="score-copy"><strong>' + verdict + '</strong><p>Out of 100, higher is better. We re-score your nights after every experiment.</p></div></div>' +
       '<h2 style="font-size:24px">Your likely suspects</h2>' +
@@ -448,19 +536,35 @@
     app.querySelector('[data-next]').onclick = function () { go('#/paywall'); };
   }
 
+  var OBJ = {
+    0: ['You tried melatonin.', 'Melatonin mostly helps you fall asleep. We look at what wakes you at 3 AM.'],
+    1: ['You tried supplements.', 'A supplement is one guess. We test one change at a time and show you the result.'],
+    2: ['You tried a sleep app.', 'A sleep app plays content. We tell you which change worked for your body.'],
+    3: ['You cut back on caffeine.', 'Good start. Your check-ins will show if it actually made a difference.'],
+    4: ['You asked your doctor.', 'Bring them a one-page report of your nights, made from your check-ins.'],
+    5: ['You’re on hormone therapy.', 'SleepThrough works alongside it, on the habits medication can’t change.']
+  };
+  function objections() {
+    var t = picks('tried').filter(function (i) { return OBJ[i]; }).slice(0, 2);
+    if (!t.length) return '';
+    return '<div class="objs"><p class="chart-t">Why this time is different</p>' + t.map(function (i) { return '<p class="obj"><b>' + esc(OBJ[i][0]) + '</b> ' + esc(OBJ[i][1]) + '</p>'; }).join('') + '</div>';
+  }
   function viewPaywall() {
     var p = state.plan || analyze();
     var g = goalLine();
     var pick = 'q';
     screen('night',
       '<div class="topbar"><button class="icon-btn" data-back aria-label="Back">' + ICON.back + '</button><span></span></div>' +
-      '<h1 class="q-title" style="margin-top:0">Your plan to get <span class="hl">' + esc(g.text) + '</span></h1>' +
+      '<h1 class="q-title" style="margin-top:0">Your plan to get <span class="hl">' + esc(g.text) + '</span> by ' + esc(targetDate()) + '</h1>' +
+      '<p class="pw-top">12 weeks $39.99 · 7 days free · cancel any time</p>' +
       '<div class="info-card">' + goalChart() + '</div>' +
       '<ul class="pw-list"><li>Week 1: ' + esc(EXP[p.weeks[0]].name) + ' — your #1 suspect</li><li>3-minute wind-down every evening</li><li>Night mode: one tap when you wake' + (answered('waketime') && idx('waketime') < 5 ? ' ' + esc(say('waketime')) : '') + ', and your check-in fills itself in</li><li>Tonight’s plan with times, and a report for your doctor</li><li>Your result on day 7, then the next experiment</li></ul>' +
       '<div class="pw-plans" role="group" aria-label="Choose a plan">' +
       '<button class="pw-plan" data-p="q" aria-pressed="true"><b>12 weeks</b><span class="pw-price">$39.99</span><small>$3.33 a week · best value</small></button>' +
       '<button class="pw-plan" data-p="m" aria-pressed="false"><b>4 weeks</b><span class="pw-price">$19.99</span><small>$5.00 a week</small></button></div>' +
+      objections() +
       '<button class="btn btn-lamp btn-block" data-buy>Start 7-day free trial</button>' +
+      '<p class="guarantee"><b>30-day money-back promise.</b> If your nights aren’t better after 30 days of check-ins, write to us and we refund you.</p>' +
       '<p class="disclaimer" style="margin-top:12px">Free for 7 days, then the plan you chose. Cancel any time before the trial ends and you won’t be charged. <b>Preview: no real payment is taken.</b></p>' +
       '<button class="btn btn-quiet btn-block" data-free>Continue with the free week 1 preview</button>');
     app.querySelector('[data-back]').onclick = function () { go('#/result'); };
@@ -710,6 +814,7 @@
     state.checkins = [];
     weeks.forEach(function (w) { w.forEach(function (c) { state.checkins.push({ wake: c[0], awake: c[1], hot: !!c[2], did: !!c[3], rested: c[4], times: c[5] }); }); });
     state.expIndex = 3;
+    if (sevVals()) { var lower = sevVals().map(function (v, i) { return Math.max(0, v - (i === 1 ? 2 : i === 0 ? 2 : 1)); }); state.sevHistory = [{ at: now(), vals: lower }]; }
     if (!state.sub || state.sub.plan === 'free') state.sub = { plan: 'q', trialStart: now() };
     save(); toast('Sample month added: 3 weeks done, week 4 in progress');
   }
@@ -849,6 +954,17 @@
   }
 
   // ---------- Progress: score trend, constellation, sleep recipe ----------
+  function symptomCard() {
+    var base = sevVals(); if (!base) return '';
+    var hist = state.sevHistory || [], last = hist.length ? hist[hist.length - 1].vals : null;
+    var b = sevScore(base), l = last ? sevScore(last) : null;
+    var rows = SEV_ITEMS.map(function (n, i) {
+      return '<div class="sv-row"><span>' + esc(n) + '</span><span class="sv-bars"><i class="sv-a" style="width:' + (base[i] * 25) + '%"></i>' + (last ? '<i class="sv-b" style="width:' + (last[i] * 25) + '%"></i>' : '') + '</span></div>';
+    }).join('');
+    return '<section class="pcard"><h2>Symptom score</h2><p class="sv-big"><b>' + b + '</b>' + (l != null ? ' → <b class="sv-now">' + l + '</b>' : '') + ' <span>of ' + sevMax() + ', lower is better</span></p>' + rows +
+      '<p class="sc-legend"><span class="k k-a"></span>At the quiz' + (last ? ' <span class="k k-b"></span>Latest re-check' : '') + '</p>' +
+      '<a class="btn btn-night btn-block" href="#/app/rescore" style="margin-top:12px">Re-check my symptoms</a></section>';
+  }
   function viewProgress(sel) {
     if (!state.plan) return go('#/quiz/0');
     var weeks = []; for (var w = 0; w <= state.expIndex; w++) { var s = weekStats(w); if (s) weeks.push(s); }
@@ -869,6 +985,7 @@
     var recipe = weeks.filter(function (s) { return s.verdict; });
     var keep = recipe.filter(function (s) { return s.verdict === 'keep'; });
     var body = weeks.length ? (
+      symptomCard() +
       '<section class="pcard"><h2>Sleep Score</h2>' + trend + '<p class="fine-d">From your quiz, then re-scored from each week’s check-ins.</p></section>' +
       '<section class="pcard"><h2>Your nights as a sky</h2><p class="fine-d">Each star is a time you woke up. Fewer stars, better nights.</p><div class="chips" role="group" aria-label="Choose a week">' + chips + '</div>' + cons + '</section>' +
       '<section class="pcard"><h2>Your sleep recipe</h2>' +
@@ -886,14 +1003,15 @@
     if (!state.plan) return go('#/quiz/0');
     var all = state.checkins.filter(Boolean);
     var weeks = []; for (var w = 0; w <= state.expIndex; w++) { var s = weekStats(w); if (s) weeks.push(s); }
-    var sym = picks('symptoms').filter(function (i) { return i !== 6; }).map(function (i) { return step('symptoms').opts[i]; });
+    var SHORT = ['none', 'barely', 'manageable', 'gets in the way', 'severe']; var sym = symList(2).map(function (x) { return x.n + ' (' + SHORT[x.v] + ')'; });
+    var hist = state.sevHistory || [], sb = sevScore(sevVals()), sl = hist.length ? sevScore(hist[hist.length - 1].vals) : null;
     var tried = picks('tried').filter(function (i) { return i !== 6; }).map(function (i) { return step('tried').opts[i]; });
     var times = all.reduce(function (a, c) { return a.concat(c.times || []); }, []);
     var typical = times.length ? fmtHM(Math.round(avg(times)) + 1260) : (answered('waketime') ? say('waketime') : '—');
     var qs = [];
     if (idx('sweats') >= 2) qs.push('Night sweats wake me ' + say('sweats') + '. Which treatments, hormonal or not, could fit me?');
     qs.push(has('tried', 5) ? 'Is my current hormone therapy dose right for my sleep?' : 'Is hormone therapy an option for me?');
-    if (has('symptoms', 1) || has('symptoms', 2)) qs.push('Are the mood changes and anxiety I’ve noticed part of perimenopause?');
+    if (sevAt(3) >= 2 || sevAt(4) >= 2) qs.push('Are the mood changes and anxiety I’ve noticed part of perimenopause?');
     if (has('tried', 0) || has('tried', 1)) qs.push('Is it fine to keep taking melatonin or supplements?');
     qs.push('Could something else be part of this, like sleep apnea, thyroid or iron levels?');
     var rows = all.length ? [
@@ -908,7 +1026,7 @@
       '<p class="fine-d no-print">A one-page summary to bring to your appointment. Untick any question you don’t want on it.</p>' +
       '<article class="report">' +
       '<header class="rp-head"><h2>Sleep summary</h2><p>Prepared with SleepThrough on ' + nowDate().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) + (all.length ? ', covering ' + all.length + ' nights' : ', from my quiz answers') + '</p></header>' +
-      '<section><h3>About me</h3><dl class="rp-dl"><dt>Age</dt><dd>' + esc(say('age') || '—') + '</dd><dt>Periods</dt><dd>' + esc(say('cycle') || '—') + '</dd><dt>Also noticed</dt><dd>' + esc(sym.join(', ') || 'Nothing else') + '</dd></dl></section>' +
+      '<section><h3>About me</h3><dl class="rp-dl"><dt>Age</dt><dd>' + esc(say('age') || '—') + '</dd><dt>Periods</dt><dd>' + esc(say('cycle') || '—') + '</dd><dt>Stage my answers fit</dt><dd>' + esc(stageGuess().name) + '</dd><dt>Symptom score</dt><dd>' + (sb != null ? sb + ' of ' + sevMax() + (sl != null ? ', now ' + sl : '') : '—') + '</dd><dt>Also noticed</dt><dd>' + esc(sym.join(', ') || 'Nothing else') + '</dd></dl></section>' +
       '<section><h3>My sleep</h3><dl class="rp-dl">' + rows.map(function (r) { return '<dt>' + esc(r[0]) + '</dt><dd>' + esc(String(r[1])) + '</dd>'; }).join('') + '</dl>' +
       (times.length ? dial({ stars: times.map(function (m, i) { return { m: m, ring: (i % 3) * 9 }; }), center: '<b class="dial-num">' + times.length + '</b><span>wake-up times</span>', cls: 'dial-day dial-sm', label: 'All logged wake-up times' }) : '') + '</section>' +
       '<section><h3>What I’ve tried</h3><ul class="rp-ul">' + tried.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') +
@@ -956,10 +1074,15 @@
     if (h === '#/app/checkin') return state.plan ? viewCheckin() : go('#/quiz/0');
     if (h === '#/app/insight') return state.plan ? viewInsight() : go('#/quiz/0');
     if (h === '#/app/progress') return viewProgress();
+    if (h === '#/app/rescore') return state.plan ? viewScale(0, 0, { vals: (sevVals() || []).slice() }) : go('#/quiz/0');
     if (h === '#/app/report') return viewReport();
     if (h === '#/app/devices') return viewDevices();
     go('#/');
   }
+  // Landing: start the quiz from an age band (first answer saved, quiz continues at step 2).
+  Array.prototype.slice.call(document.querySelectorAll('[data-age]')).forEach(function (b) {
+    b.onclick = function () { state.answers.age = +b.dataset.age; save(); go('#/quiz/1'); };
+  });
   // Landing films: play only when visible; respect reduced motion.
   (function films() {
     var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
