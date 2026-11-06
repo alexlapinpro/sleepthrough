@@ -1068,6 +1068,13 @@
     if (h === '#/analyzing') return viewAnalyzing();
     if (h === '#/result') return state.plan || Object.keys(state.answers).length ? viewResult() : go('#/quiz/0');
     if (h === '#/paywall') return viewPaywall();
+    if (h === '#/demo') {
+      // Direct link to the in-app experience for judges: a sample user who finished the quiz and started the trial.
+      state = { answers: { age: 2, cycle: 1, problem: 1, waketime: 3, wakeups: 2, awakeLong: 2, awakeDo: [0, 1], badNights: 1, sweats: 1, energy: 2, cups: 2, caffeine: 1, work: 1, wine: 1, lastDrink: 1, screens: 0, room: 2, stress: 2, goal: 0, minutes: 0, sev: [3, 4, 3, 3, 3, 2] },
+        email: '', plan: null, sub: { plan: 'q', trialStart: now() }, checkins: [], expIndex: 0 };
+      state.plan = analyze(); fillMonth();
+      return go('#/app');
+    }
     if (h === '#/app') return viewHome();
     if (h === '#/app/night' || h === '#/app/3am') return viewNight();
     if (h === '#/app/tonight') return viewTonight();
