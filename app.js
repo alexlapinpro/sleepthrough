@@ -735,7 +735,7 @@
       (done ? '<a class="btn btn-lamp btn-block" href="#/app/insight" style="margin-top:16px">See your week ' + (state.expIndex + 1) + ' result</a>' : '') + '</section>';
 
     screen(sky[0],
-      '<header class="app-head"><a class="brand" href="#/"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 3a8 8 0 1 0 6 13A9 9 0 0 1 15 3z"/></svg>SleepThrough</a><span class="clock-s">' + fmtClock(now()) + '</span></header>' +
+      '<header class="app-head"><a class="brand" href="#/" aria-label="SleepThrough home"><svg class="mark" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="50" fill="#E8A93E"/><path d="M20.5 47.5q11.5 11 23 0M56.5 47.5q11.5 11 23 0" fill="none" stroke="#22264B" stroke-width="4" stroke-linecap="round"/><circle cx="21.5" cy="66" r="6.5" fill="#E38D52"/><circle cx="78.5" cy="66" r="6.5" fill="#E38D52"/></svg><span>sleepthrough</span></a><span class="clock-s">' + fmtClock(now()) + '</span></header>' +
       (free ? '<p class="banner">Free preview: week 1 is open. <a href="#/paywall">Start the trial</a> to unlock weeks 2–4.</p>' : '') +
       '<h1 class="hello">' + hello + '</h1>' +
       '<p class="goal-s">Goal: ' + esc(g.text) + (streak() ? ' · ' + streak() + ' check-ins in a row' : '') + '</p>' + body +

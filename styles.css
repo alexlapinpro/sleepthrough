@@ -60,8 +60,8 @@ img, svg { max-width: 100%; }
 /* ---------- night surfaces ---------- */
 .night { background: var(--night); color: var(--moon); }
 .nav { display: flex; justify-content: space-between; align-items: center; padding: 18px 24px; max-width: none; }
-.brand { display: inline-flex; align-items: center; gap: 10px; font: 400 22px var(--serif); text-decoration: none; color: var(--moon); }
-.brand svg { width: 22px; height: 22px; fill: var(--lamp); }
+.brand { display: inline-flex; align-items: center; gap: 10px; font: 700 23px var(--sans); letter-spacing: -0.03em; text-decoration: none; color: var(--moon); }
+.brand .mark { width: 30px; height: 30px; flex: none; }
 
 .hero { padding: 40px 24px 96px; }
 .hero-inner { max-width: 1080px; margin: 0 auto; display: grid; grid-template-columns: 1.15fr 1fr; grid-template-areas: "pre copy" "clock copy" "post copy"; column-gap: 56px; align-items: end; }
@@ -127,7 +127,8 @@ details[open] summary::after { content: "–"; }
 details p { margin: 12px 0 0; color: var(--muted); }
 
 .foot { padding: 56px 0 64px; }
-.brand-foot { font: 400 24px var(--serif); }
+.brand-foot { font-size: 26px; margin: 0 0 8px; }
+.brand-foot .mark { width: 34px; height: 34px; }
 .muted-night { color: var(--moon-dim); font-size: 15px; }
 
 /* ============ APP ============ */
@@ -371,8 +372,8 @@ details p { margin: 12px 0 0; color: var(--muted); }
 .screen.has-tabs .screen-in { padding-bottom: 104px; }
 
 .app-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; min-height: 48px; margin-bottom: 8px; }
-.app-head .brand { font-size: 19px; color: inherit; }
-.app-head .brand svg { width: 18px; height: 18px; }
+.app-head .brand { font-size: 20px; color: inherit; }
+.app-head .brand .mark { width: 26px; height: 26px; }
 .clock-s { font: 400 17px var(--serif); opacity: .75; font-variant-numeric: tabular-nums; }
 .link-s { font-size: 15px; color: inherit; }
 .hello { font-size: 34px; margin: 4px 0 2px; }
