@@ -40,15 +40,15 @@
       .res { font: 400 44px/1.18 "Young Serif"; margin-bottom: 26px; }
       .res b { font-weight: 400; color: var(--lamp); }
       .keep { display: inline-block; background: var(--cool); color: #0B0918; font: 700 30px "Atkinson Next"; padding: 14px 30px; border-radius: 40px; }
-      .brand { position: absolute; left: 150px; top: 120px; font: 400 40px "Young Serif"; color: var(--ink); display: flex; align-items: center; gap: 16px; }
-      .brand svg { width: 38px; height: 38px; fill: var(--lamp); }
+      .brand { position: absolute; left: 150px; top: 120px; font: 700 42px "Atkinson Next"; letter-spacing: -0.03em; color: var(--ink); display: flex; align-items: center; gap: 16px; }
+      .brand svg { width: 52px; height: 52px; flex: none; }
       .foot { position: absolute; left: 150px; bottom: 100px; font: 400 28px "Atkinson Next"; color: var(--dim); }
     </style>
   </head>
   <body>
     <div id="root" data-composition-id="main" data-start="0" data-duration="21" data-fps="30" data-width="1920" data-height="1080">
       <div id="frame" class="clip" data-start="0" data-duration="21" data-track-index="0">
-        <p class="brand"><svg viewBox="0 0 24 24"><path d="M15 3a8 8 0 1 0 6 13A9 9 0 0 1 15 3z"/></svg>SleepThrough</p>
+        <p class="brand"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" fill="#E8A93E"/><path d="M20.5 47.5q11.5 11 23 0M56.5 47.5q11.5 11 23 0" fill="none" stroke="#22264B" stroke-width="4" stroke-linecap="round"/><circle cx="21.5" cy="66" r="6.5" fill="#E38D52"/><circle cx="78.5" cy="66" r="6.5" fill="#E38D52"/></svg>sleepthrough</p>
         <div class="phone" id="phone">
           <div class="pin" id="p1">
             <div class="bar"><i id="p1bar"></i></div>
@@ -76,7 +76,7 @@
             <span class="keep" id="keep">Keep it</span>
           </div>
         </div>
-        <div class="copy" id="t1"><p class="step">Step 1 of 4</p><h1 class="head">Tell us about your nights.</h1><p class="sub">Three minutes of questions about waking, sweats, wine, coffee and stress.</p></div>
+        <div class="copy" id="t1"><p class="step">Step 1 of 4</p><h1 class="head">Tell us about your nights.</h1><p class="sub">Four minutes of questions about waking, sweats, wine, coffee and stress.</p></div>
         <div class="copy" id="t2"><p class="step">Step 2 of 4</p><h1 class="head">See what’s most likely waking you.</h1><p class="sub">Your answers, ranked into three suspects.</p></div>
         <div class="copy" id="t3"><p class="step">Step 3 of 4</p><h1 class="head">Test one change for 7 nights.</h1><p class="sub">A plan for the evening, one tap at night, a check-in in the morning.</p></div>
         <div class="copy" id="t4"><p class="step">Step 4 of 4</p><h1 class="head">Keep what works for you.</h1><p class="sub">Your own nights are the evidence. Then the next test.</p></div>
