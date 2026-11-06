@@ -137,9 +137,13 @@
       - [0, 0, 3, 6][idx('room')]
       - (idx('problem') === 3 ? 5 : 0);
     score = Math.max(28, Math.min(92, score));
-    var top = ranked.slice(0, 3);
+    // Only causes her answers point to (body clock always counts), so a suspect never has an empty reason.
+    var top = ranked.filter(function (k) { return w[k] > 0; }).slice(0, 3);
     var plan = top.slice();
-    if (plan.indexOf('rhythm') === -1) plan.push('rhythm'); else plan.push(ranked[3]);
+    if (plan.indexOf('rhythm') === -1) plan.push('rhythm');
+    // Fill the rest with tests that make sense for anyone; never "no wine" for a woman who doesn't drink.
+    var fits = { rhythm: true, screens: true, mind: true, heat: true, caffeine: idx('cups') > 0, alcohol: idx('wine') > 0 };
+    ranked.concat(['rhythm', 'screens', 'mind', 'heat']).forEach(function (k) { if (plan.length < 4 && plan.indexOf(k) === -1 && fits[k]) plan.push(k); });
     return { score: score, suspects: top, weeks: plan.slice(0, 4) };
   }
 
@@ -458,7 +462,7 @@
     screen('night',
       '<div class="topbar"><button class="icon-btn" data-back aria-label="Back">' + ICON.back + '</button><div class="progress"><i style="width:100%"></i></div><span class="step-count"></span></div>' +
       '<h1 class="q-title">Your plan is ready. Where should we send it?</h1>' +
-      '<p class="q-help">We’ll email your results and your week 1 experiment. No spam, unsubscribe any time.</p>' +
+      '<p class="q-help">We’ll send your Sleep Score, your week 1 experiment and a one-page summary you can show your doctor. No spam, unsubscribe any time.</p>' +
       '<form id="ef"><label for="em" class="q-help" style="display:block;margin:8px 0 6px">Email</label>' +
       '<input id="em" class="field" type="email" autocomplete="email" placeholder="you@example.com" value="' + esc(state.email) + '">' +
       '<div class="spacer"></div><button class="btn btn-lamp btn-block" type="submit" style="margin-top:20px">See my results</button></form>' +
@@ -556,22 +560,32 @@
     screen('night',
       '<div class="topbar"><button class="icon-btn" data-back aria-label="Back">' + ICON.back + '</button><span></span></div>' +
       '<h1 class="q-title" style="margin-top:0">Your plan to get <span class="hl">' + esc(g.text) + '</span> by ' + esc(targetDate()) + '</h1>' +
-      '<p class="pw-top">12 weeks $39.99 · 7 days free · cancel any time</p>' +
+      '<p class="pw-top">7 days free · then $3.33 a week · cancel any time</p>' +
       '<div class="info-card">' + goalChart() + '</div>' +
-      '<ul class="pw-list"><li>Week 1: ' + esc(EXP[p.weeks[0]].name) + ' — your #1 suspect</li><li>3-minute wind-down every evening</li><li>Night mode: one tap when you wake' + (answered('waketime') && idx('waketime') < 5 ? ' ' + esc(say('waketime')) : '') + ', and your check-in fills itself in</li><li>Tonight’s plan with times, and a report for your doctor</li><li>Your result on day 7, then the next experiment</li></ul>' +
       '<div class="pw-plans" role="group" aria-label="Choose a plan">' +
-      '<button class="pw-plan" data-p="q" aria-pressed="true"><b>12 weeks</b><span class="pw-price">$39.99</span><small>$3.33 a week · best value</small></button>' +
-      '<button class="pw-plan" data-p="m" aria-pressed="false"><b>4 weeks</b><span class="pw-price">$19.99</span><small>$5.00 a week</small></button></div>' +
-      objections() +
+      '<button class="pw-plan" data-p="q" aria-pressed="true"><b>12 weeks</b><span class="pw-price">$39.99</span><small>$0.48 a day · best value</small></button>' +
+      '<button class="pw-plan" data-p="m" aria-pressed="false"><b>4 weeks</b><span class="pw-price">$19.99</span><small>$0.71 a day</small></button></div>' +
       '<button class="btn btn-lamp btn-block" data-buy>Start 7-day free trial</button>' +
+      '<ul class="pw-trust"><li>$0 today. We remind you 2 days before the trial ends.</li><li>Cancel in 2 taps, any time.</li><li>30-day money-back promise.</li></ul>' +
+      '<h2 class="pw-h">What you get</h2>' +
+      '<ul class="pw-list"><li>Week 1: ' + esc(EXP[p.weeks[0]].name) + ' — your #1 suspect</li><li>3-minute wind-down every evening</li><li>Night mode: one tap when you wake' + (answered('waketime') && idx('waketime') < 5 ? ' ' + esc(say('waketime')) : '') + ', and your check-in fills itself in</li><li>Tonight’s plan with times, and a report for your doctor</li><li>Your result on day 7, then the next experiment</li></ul>' +
+      objections() +
       '<p class="guarantee"><b>30-day money-back promise.</b> If your nights aren’t better after 30 days of check-ins, write to us and we refund you.</p>' +
       '<p class="disclaimer" style="margin-top:12px">Free for 7 days, then the plan you chose. Cancel any time before the trial ends and you won’t be charged. <b>Preview: no real payment is taken.</b></p>' +
-      '<button class="btn btn-quiet btn-block" data-free>Continue with the free week 1 preview</button>');
-    app.querySelector('[data-back]').onclick = function () { go('#/result'); };
+      '<div class="pw-sticky"><button class="btn btn-lamp btn-block" data-buy>Start 7-day free trial · $0 today</button></div>' +
+      '<div class="downsell" hidden><div class="downsell-c"><h2>Not ready to commit?</h2><p>Start with the free week 1 preview: tonight’s plan, night mode and your morning check-in. No card.</p>' +
+      '<button class="btn btn-lamp btn-block" data-free>Try week 1 free</button><button class="btn btn-quiet btn-block" data-leave>Back to my results</button></div></div>');
+    // Sticky button only once the main one has scrolled away, so two never show at once.
+    var st = app.querySelector('.pw-sticky'), first = app.querySelector('[data-buy]');
+    st.hidden = true;
+    if ('IntersectionObserver' in window) new IntersectionObserver(function (es) { st.hidden = es[0].isIntersecting || es[0].boundingClientRect.top > 0; }).observe(first);
+    var shown = false;
+    app.querySelector('[data-back]').onclick = function () { if (shown) return go('#/result'); shown = true; app.querySelector('.downsell').hidden = false; };
+    app.querySelector('[data-leave]').onclick = function () { go('#/result'); };
     app.querySelectorAll('.pw-plan').forEach(function (b) {
       b.onclick = function () { pick = b.dataset.p; app.querySelectorAll('.pw-plan').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); }); };
     });
-    app.querySelector('[data-buy]').onclick = function () { state.sub = { plan: pick, trialStart: Date.now() }; save(); toast('Trial started. Welcome to SleepThrough.'); go('#/app'); };
+    app.querySelectorAll('[data-buy]').forEach(function (x) { x.onclick = function () { state.sub = { plan: pick, trialStart: Date.now() }; save(); toast('Trial started. Welcome to SleepThrough.'); go('#/app'); }; });
     app.querySelector('[data-free]').onclick = function () { state.sub = state.sub || { plan: 'free' }; save(); go('#/app'); };
   }
 
@@ -727,7 +741,8 @@
       body += '<a class="night-cta" href="#/app/night"><span class="moon-ic">' + ICON.moon + '</span><span><b>Awake right now?</b><small>Open night mode. The screen goes dim, one tap logs it.</small></span></a>';
     } else {
       body += '<div class="bedrow"><span>Bedtime</span><label><input type="time" id="bed" value="' + esc(state.bedtime || '22:30') + '"></label></div>' +
-        '<h2 class="sec-h">' + (ph === 'evening' ? 'Tonight’s plan' : 'Tonight’s plan starts at 7 PM') + '</h2>' + planList(k);
+        '<h2 class="sec-h">' + (ph === 'evening' ? 'Tonight’s plan' : 'Tonight’s plan starts at 7 PM') + '</h2>' + planList(k)
+      body += '<button class="btn btn-quiet btn-block cal-btn" data-ics>' + ICON.moon + ' Add an evening reminder to my calendar</button>';
     }
 
     body += '<section class="exp-card" aria-label="This week’s test"><p class="lbl">Week ' + (state.expIndex + 1) + ' of 4 · ' + (done ? 'complete' : 'night ' + Math.min(wk.length + 1, 7) + ' of 7') + '</p>' +
@@ -743,8 +758,25 @@
       demoTools(), sky[1], 'today');
     var bed = app.querySelector('#bed'); if (bed) bed.onchange = function () { state.bedtime = bed.value || '22:30'; save(); toast('Bedtime set to ' + fmtHM(parseHM(state.bedtime))); viewHome(); };
     bindPlan(k, viewHome);
+    var ics = app.querySelector('[data-ics]'); if (ics) ics.onclick = function () { downloadIcs(); toast('Open the file to add the reminder to your calendar'); };
     app.querySelectorAll('[data-pk]').forEach(function (c) { c.onchange = function () { n.parked[+c.dataset.pk].done = c.checked; save(); viewHome(); }; });
     bindDemo(viewHome);
+  }
+  // Web has no push, so the nightly nudge goes into her own calendar: a daily event 60 minutes before bedtime, with an alert.
+  function downloadIcs() {
+    var bed = parseHM(state.bedtime || '22:30'), at = ((bed - 60) + 1440) % 1440;
+    var d = nowDate(), ds = d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate());
+    var t = pad(Math.floor(at / 60)) + pad(at % 60) + '00', te = pad(Math.floor(((at + 15) % 1440) / 60)) + pad((at + 15) % 60) + '00';
+    var e = currentExp();
+    var lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//SleepThrough//EN', 'BEGIN:VEVENT',
+      'UID:sleepthrough-evening-' + ds + '@sleepthrough.vercel.app', 'DTSTAMP:' + ds + 'T000000Z',
+      'DTSTART:' + ds + 'T' + t, 'DTEND:' + ds + 'T' + te, 'RRULE:FREQ=DAILY;COUNT=84',
+      'SUMMARY:SleepThrough: tonight’s plan', 'DESCRIPTION:This week: ' + e.name.replace(/[,;]/g, ' ') + '. Open sleepthrough.vercel.app/#/app',
+      'URL:https://sleepthrough.vercel.app/#/app',
+      'BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:Wind-down starts soon', 'TRIGGER:PT0M', 'END:VALARM', 'END:VEVENT', 'END:VCALENDAR'];
+    var blob = new Blob([lines.join('\r\n')], { type: 'text/calendar' });
+    var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'sleepthrough-evening.ics';
+    document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 500);
   }
   function action(href, icon, title, sub) {
     return '<a class="action" href="' + href + '"><span class="ic">' + icon + '</span><span><b>' + esc(title) + '</b><small>' + esc(sub) + '</small></span><span class="chev" aria-hidden="true">›</span></a>';
@@ -804,7 +836,7 @@
     for (var i = 0; i < 7; i++) { var c = sample[i]; state.checkins[start + i] = { wake: c[0], awake: c[1], hot: !!c[2], did: !!c[3], rested: c[4], times: c[5] }; }
     save(); toast('Sample week added');
   }
-  function fillMonth() {
+  function fillMonth(quiet) {
     var weeks = [
       [[3, 2, 1, 0, 2, [95, 250, 420]], [1, 1, 0, 1, 3, [365]], [1, 0, 0, 1, 4, [370]], [3, 2, 1, 0, 2, [120, 245, 410]], [1, 1, 0, 1, 4, [355]], [0, 0, 0, 1, 5, []], [1, 0, 0, 1, 4, [380]]],
       [[2, 1, 0, 1, 3, [250, 430]], [1, 0, 0, 1, 4, [372]], [3, 2, 1, 0, 2, [150, 250, 440]], [1, 1, 0, 1, 4, [360]], [0, 0, 0, 1, 5, []], [2, 1, 0, 0, 3, [240, 400]], [0, 0, 0, 1, 5, []]],
@@ -816,7 +848,7 @@
     state.expIndex = 3;
     if (sevVals()) { var lower = sevVals().map(function (v, i) { return Math.max(0, v - (i === 1 ? 2 : i === 0 ? 2 : 1)); }); state.sevHistory = [{ at: now(), vals: lower }]; }
     if (!state.sub || state.sub.plan === 'free') state.sub = { plan: 'q', trialStart: now() };
-    save(); toast('Sample month added: 3 weeks done, week 4 in progress');
+    save(); if (!quiet) toast('Sample month added: 3 weeks done, week 4 in progress');
   }
 
   // ---------- breathing: inhale 4s, exhale 6s, 3 minutes ----------
@@ -1072,7 +1104,7 @@
       // Direct link to the in-app experience for judges: a sample user who finished the quiz and started the trial.
       state = { answers: { age: 2, cycle: 1, problem: 1, waketime: 3, wakeups: 2, awakeLong: 2, awakeDo: [0, 1], badNights: 1, sweats: 1, energy: 2, cups: 2, caffeine: 1, work: 1, wine: 1, lastDrink: 1, screens: 0, room: 2, stress: 2, goal: 0, minutes: 0, sev: [3, 4, 3, 3, 3, 2] },
         email: '', plan: null, sub: { plan: 'q', trialStart: now() }, checkins: [], expIndex: 0 };
-      state.plan = analyze(); fillMonth();
+      state.plan = analyze(); fillMonth(true);
       return go('#/app');
     }
     if (h === '#/app') return viewHome();
@@ -1100,6 +1132,20 @@
       es.forEach(function (e) { var v = e.target; if (e.isIntersecting) { if (v.preload === 'none') v.preload = 'auto'; var p = v.play(); if (p) p.catch(function () {}); } else v.pause(); });
     }, { threshold: 0.35 });
     vids.forEach(function (v) { io.observe(v); });
+  })();
+  // Sticky quiz button on the landing: after the hero, hidden once the closing CTA is on screen.
+  (function () {
+    var cta = document.getElementById('sticky-cta'), hero = document.querySelector('.hero'), end = document.getElementById('start');
+    if (!cta || !hero) return;
+    function upd() {
+      if (landing.hidden) { cta.hidden = true; return; }
+      var past = hero.getBoundingClientRect().bottom < 80;
+      var atEnd = end && end.getBoundingClientRect().top < window.innerHeight;
+      cta.hidden = !past || atEnd;
+    }
+    window.addEventListener('scroll', upd, { passive: true });
+    window.addEventListener('hashchange', upd);
+    upd();
   })();
   window.addEventListener('hashchange', function () { if ('speechSynthesis' in window) { try { speechSynthesis.cancel(); } catch (e) {} } route(); });
   route();
